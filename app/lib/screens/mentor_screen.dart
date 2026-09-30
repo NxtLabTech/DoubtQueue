@@ -3,7 +3,15 @@ import 'package:flutter/material.dart';
 import '../models/doubt.dart';
 import '../models/session.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/confirm_dialog.dart';
 import '../widgets/content_width.dart';
+import '../widgets/create_session_card.dart';
+import '../widgets/current_doubt_card.dart';
+import '../widgets/queue_item_card.dart';
+import '../widgets/section_header.dart';
+import '../widgets/state_views.dart';
+import '../widgets/stats_row.dart';
 import '../widgets/status_badge.dart';
 
 class MentorScreen extends StatefulWidget {
@@ -16,8 +24,6 @@ class MentorScreen extends StatefulWidget {
 }
 
 class _MentorScreenState extends State<MentorScreen> {
-  final _title = TextEditingController();
-  final _mentorName = TextEditingController();
   List<Session> _sessions = [];
   int? _selectedId;
   List<Doubt> _queue = [];
@@ -25,37 +31,52 @@ class _MentorScreenState extends State<MentorScreen> {
   Doubt? _current;
   bool _loading = true;
   bool _busy = false;
-  String? _error;
+  String? _loadError;
+  String? _actionError;
+  String? _notice;
+
+  Session? get _selected {
+    for (final session in _sessions) {
+      if (session.id == _selectedId) return session;
+    }
+    return null;
+  }
 
   @override
   void initState() {
     super.initState();
-    _run(_loadSessions);
+    _loadFirstTime();
   }
 
-  @override
-  void dispose() {
-    _title.dispose();
-    _mentorName.dispose();
-    super.dispose();
+  Future<void> _loadFirstTime() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      await _loadSessions();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _loadError = e.message);
+    }
+    if (!mounted) return;
+    setState(() => _loading = false);
   }
 
   Future<void> _run(Future<void> Function() action) async {
     setState(() {
       _busy = true;
-      _error = null;
+      _actionError = null;
+      _notice = null;
     });
     try {
       await action();
     } on ApiException catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.message);
+      setState(() => _actionError = e.message);
     }
     if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _loading = false;
-    });
+    setState(() => _busy = false);
   }
 
   Future<void> _loadSessions({int? selectId}) async {
@@ -83,22 +104,10 @@ class _MentorScreenState extends State<MentorScreen> {
     });
   }
 
-  Future<void> _createSession() async {
-    final title = _title.text.trim();
-    final mentorName = _mentorName.text.trim();
-    if (title.isEmpty || mentorName.isEmpty) {
-      setState(
-        () => _error = 'Enter a title and your name to create a session.',
-      );
-      return;
-    }
-    await _run(() async {
-      final session = await widget.api.createSession(title, mentorName);
-      _title.clear();
-      _mentorName.clear();
-      _current = null;
-      await _loadSessions(selectId: session.id);
-    });
+  Future<void> _createSession(String title, String mentorName) async {
+    final session = await widget.api.createSession(title, mentorName);
+    setState(() => _current = null);
+    await _loadSessions(selectId: session.id);
   }
 
   Future<void> _selectSession(int? id) async {
@@ -120,42 +129,47 @@ class _MentorScreenState extends State<MentorScreen> {
     });
   }
 
-  Future<void> _finishCurrent({required bool solved}) async {
+  Future<void> _markSolved() async {
     final id = _current!.id;
     await _run(() async {
-      if (solved) {
-        await widget.api.markSolved(id);
-      } else {
-        await widget.api.markSkipped(id);
-      }
+      await widget.api.markSolved(id);
+      setState(() => _current = null);
+      await _loadDetails();
+    });
+  }
+
+  Future<void> _skip() async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Skip this doubt?',
+      message: 'The student will see that their doubt was skipped.',
+      confirmLabel: 'Skip doubt',
+    );
+    if (!confirmed) return;
+
+    final id = _current!.id;
+    await _run(() async {
+      await widget.api.markSkipped(id);
       setState(() => _current = null);
       await _loadDetails();
     });
   }
 
   Future<void> _closeSession() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Close session?'),
-        content: const Text('Students will not be able to join this session.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Close session'),
-          ),
-        ],
-      ),
+    final confirmed = await confirmAction(
+      context,
+      title: 'Close this session?',
+      message: 'Students will not be able to join it any more.',
+      confirmLabel: 'Close session',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
+
+    final title = _selected?.title ?? 'Session';
     await _run(() async {
       await widget.api.closeSession(_selectedId!);
       _current = null;
       await _loadSessions();
+      setState(() => _notice = '$title was closed.');
     });
   }
 
@@ -163,199 +177,174 @@ class _MentorScreenState extends State<MentorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mentor'),
+        title: const Text('Mentor dashboard'),
         actions: [
           IconButton(
-            onPressed: _busy ? null : () => _run(_loadSessions),
+            onPressed: _busy || _loading ? null : () => _run(_loadSessions),
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
           ),
         ],
       ),
-      body: ContentWidth(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (_busy) const LinearProgressIndicator(),
-                  if (_error != null) _buildError(),
-                  _buildCreateForm(),
-                  const SizedBox(height: 16),
-                  _buildSessionPicker(),
-                  if (_selectedId != null) ..._buildSessionDetails(),
-                ],
-              ),
-      ),
+      body: ContentWidth(child: _buildBody()),
     );
   }
 
-  Widget _buildError() {
-    final colors = Theme.of(context).colorScheme;
-
-    return Card(
-      color: colors.errorContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(_error!, style: TextStyle(color: colors.onErrorContainer)),
-      ),
-    );
-  }
-
-  Widget _buildCreateForm() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Create a session',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _title,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _mentorName,
-              decoration: const InputDecoration(
-                labelText: 'Mentor name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: _busy ? null : _createSession,
-              child: const Text('Create session'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSessionPicker() {
-    if (_sessions.isEmpty) {
-      return const Text('There are no open sessions. Create one above.');
+  Widget _buildBody() {
+    if (_loading) {
+      return const LoadingView(message: 'Loading dashboard...');
+    }
+    if (_loadError != null) {
+      return ErrorView(message: _loadError!, onRetry: _loadFirstTime);
     }
 
-    return InputDecorator(
-      decoration: const InputDecoration(
-        labelText: 'Open session',
-        border: OutlineInputBorder(),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: _selectedId,
-          isExpanded: true,
-          hint: const Text('Select a session'),
-          items: [
-            for (final session in _sessions)
-              DropdownMenuItem(
-                value: session.id,
-                child: Text(
-                  '${session.title} (${session.mentorName})',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-          ],
-          onChanged: _busy ? null : _selectSession,
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildSessionDetails() {
-    final textTheme = Theme.of(context).textTheme;
-
-    return [
-      const SizedBox(height: 16),
-      _buildStats(),
-      const SizedBox(height: 16),
-      if (_current != null) _buildCurrentDoubt(_current!),
-      FilledButton.icon(
-        onPressed: _busy || _current != null || _queue.isEmpty
-            ? null
-            : _takeNext,
-        icon: const Icon(Icons.arrow_forward),
-        label: const Text('Take next'),
-      ),
-      const SizedBox(height: 24),
-      Text('Waiting queue', style: textTheme.titleMedium),
-      const SizedBox(height: 8),
-      if (_queue.isEmpty) const Text('No students are waiting.'),
-      for (var i = 0; i < _queue.length; i++) _buildQueueItem(i, _queue[i]),
-      const SizedBox(height: 24),
-      OutlinedButton(
-        onPressed: _busy ? null : _closeSession,
-        child: const Text('Close session'),
-      ),
-    ];
-  }
-
-  Widget _buildStats() {
-    const labels = {
-      'WAITING': 'Waiting',
-      'IN_PROGRESS': 'In progress',
-      'SOLVED': 'Solved',
-      'SKIPPED': 'Skipped',
-    };
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return ListView(
+      padding: const EdgeInsets.all(pagePadding),
       children: [
-        for (final entry in labels.entries)
-          Chip(label: Text('${entry.value}: ${_stats[entry.key] ?? 0}')),
+        Text(
+          'Start a session, then take students from the queue one by one.',
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+        const SizedBox(height: itemGap),
+        SizedBox(
+          height: 4,
+          child: _busy ? const LinearProgressIndicator() : null,
+        ),
+        if (_actionError != null) ...[
+          ErrorBanner(message: _actionError!),
+          const SizedBox(height: itemGap),
+        ],
+        if (_notice != null) ...[
+          SuccessBanner(message: _notice!),
+          const SizedBox(height: itemGap),
+        ],
+        const SizedBox(height: itemGap),
+        CreateSessionCard(onCreate: _createSession),
+        const SizedBox(height: sectionGap),
+        ..._buildSessionSection(),
       ],
     );
   }
 
-  Widget _buildCurrentDoubt(Doubt doubt) {
+  List<Widget> _buildSessionSection() {
+    final session = _selected;
+
+    return [
+      const SectionHeader(title: 'Session'),
+      const SizedBox(height: itemGap),
+      if (_sessions.isEmpty)
+        const Card(
+          child: EmptyView(
+            icon: Icons.event_busy,
+            title: 'No open sessions',
+            message: 'Start a session above to open a queue for students.',
+          ),
+        )
+      else
+        _buildSessionPicker(),
+      if (session != null) ...[
+        const SizedBox(height: sectionGap),
+        const SectionHeader(title: 'Statistics'),
+        const SizedBox(height: itemGap),
+        StatsRow(stats: _stats),
+        const SizedBox(height: sectionGap),
+        ..._buildCurrentSection(),
+        const SizedBox(height: sectionGap),
+        ..._buildQueueSection(),
+      ],
+    ];
+  }
+
+  Widget _buildSessionPicker() {
+    final session = _selected;
+
     return Card(
-      color: Theme.of(context).colorScheme.secondaryContainer,
-      margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  'Current doubt',
-                  style: Theme.of(context).textTheme.titleMedium,
+            InputDecorator(
+              decoration: const InputDecoration(labelText: 'Open session'),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: _selectedId,
+                  isExpanded: true,
+                  hint: const Text('Select a session'),
+                  items: [
+                    for (final item in _sessions)
+                      DropdownMenuItem(
+                        value: item.id,
+                        child: Text(
+                          '${item.title} (${item.mentorName})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: _busy ? null : _selectSession,
                 ),
-                StatusBadge(status: doubt.status),
-              ],
+              ),
             ),
-            const SizedBox(height: 8),
-            Text('${doubt.studentName} - ${doubt.topic}'),
-            const SizedBox(height: 4),
-            Text(doubt.question),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton(
-                  onPressed: _busy ? null : () => _finishCurrent(solved: true),
-                  child: const Text('Mark solved'),
-                ),
-                OutlinedButton(
-                  onPressed: _busy ? null : () => _finishCurrent(solved: false),
-                  child: const Text('Skip'),
-                ),
-              ],
+            if (session != null) ...[
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  StatusBadge(status: session.status),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _closeSession,
+                    icon: const Icon(Icons.lock_outline),
+                    label: const Text('Close session'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildCurrentSection() {
+    final current = _current;
+
+    return [
+      const SectionHeader(title: 'Current doubt'),
+      const SizedBox(height: itemGap),
+      if (current != null)
+        CurrentDoubtCard(
+          doubt: current,
+          busy: _busy,
+          onSolved: _markSolved,
+          onSkipped: _skip,
+        )
+      else
+        _buildNoCurrentDoubt(),
+    ];
+  }
+
+  Widget _buildNoCurrentDoubt() {
+    final hasWaiting = _queue.isNotEmpty;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const EmptyView(
+              icon: Icons.support_agent,
+              title: 'No doubt is currently in progress.',
+              message: 'Take the next student when you are ready.',
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _busy || !hasWaiting ? null : _takeNext,
+                icon: const Icon(Icons.arrow_forward),
+                label: const Text('Take next student'),
+              ),
             ),
           ],
         ),
@@ -363,14 +352,31 @@ class _MentorScreenState extends State<MentorScreen> {
     );
   }
 
-  Widget _buildQueueItem(int index, Doubt doubt) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(child: Text('${index + 1}')),
-        title: Text('${doubt.studentName} - ${doubt.topic}'),
-        subtitle: Text(doubt.question),
+  List<Widget> _buildQueueSection() {
+    return [
+      SectionHeader(
+        title: 'Waiting queue',
+        subtitle: '${_queue.length} waiting',
+        trailing: TextButton.icon(
+          onPressed: _busy ? null : () => _run(_loadDetails),
+          icon: const Icon(Icons.refresh),
+          label: const Text('Refresh'),
+        ),
       ),
-    );
+      const SizedBox(height: itemGap),
+      if (_queue.isEmpty)
+        const Card(
+          child: EmptyView(
+            icon: Icons.groups_outlined,
+            title: 'No students are waiting.',
+            message: 'New questions will appear here when students join.',
+          ),
+        )
+      else
+        for (var i = 0; i < _queue.length; i++) ...[
+          QueueItemCard(position: i + 1, doubt: _queue[i]),
+          const SizedBox(height: itemGap),
+        ],
+    ];
   }
 }

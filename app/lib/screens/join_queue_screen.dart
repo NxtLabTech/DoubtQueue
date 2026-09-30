@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../models/session.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/content_width.dart';
+import '../widgets/state_views.dart';
+import '../widgets/status_badge.dart';
 import 'my_doubt_screen.dart';
 
 class JoinQueueScreen extends StatefulWidget {
@@ -65,85 +68,158 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
     }
   }
 
-  String? _required(String? value) {
-    return value == null || value.trim().isEmpty
-        ? 'This field is required'
-        : null;
+  String? _required(String? value, String message) {
+    return value == null || value.trim().isEmpty ? message : null;
+  }
+
+  String? _validateEmail(String? value) {
+    final email = value?.trim() ?? '';
+    if (email.isEmpty) {
+      return 'Enter your email address';
+    }
+    if (!email.contains('@') || !email.contains('.')) {
+      return 'Enter a valid email address';
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Join Queue')),
+      appBar: AppBar(title: const Text('Join queue')),
       body: ContentWidth(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(pagePadding),
           children: [
-            Text(
-              widget.session.title,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            Text('Mentor: ${widget.session.mentorName}'),
-            const SizedBox(height: 16),
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _name,
-                    decoration: const InputDecoration(
-                      labelText: 'Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    textInputAction: TextInputAction.next,
-                    validator: _required,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _email,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    validator: _required,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _topic,
-                    decoration: const InputDecoration(
-                      labelText: 'Topic',
-                      border: OutlineInputBorder(),
-                    ),
-                    textInputAction: TextInputAction.next,
-                    validator: _required,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _question,
-                    decoration: const InputDecoration(
-                      labelText: 'Question',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                    ),
-                    minLines: 3,
-                    maxLines: 6,
-                    validator: _required,
-                  ),
-                ],
-              ),
-            ),
+            _SessionSummary(session: widget.session),
+            const SizedBox(height: sectionGap),
+            _buildFormCard(),
             if (_error != null) ...[
-              const SizedBox(height: 16),
-              Text(_error!, style: TextStyle(color: colors.error)),
+              const SizedBox(height: itemGap),
+              ErrorBanner(message: _error!),
             ],
-            const SizedBox(height: 24),
-            FilledButton(
+            const SizedBox(height: sectionGap),
+            FilledButton.icon(
               onPressed: _submitting ? null : _submit,
-              child: Text(_submitting ? 'Joining...' : 'Join Queue'),
+              icon: _submitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.login),
+              label: Text(_submitting ? 'Joining...' : 'Join queue'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your details',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _name,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                textInputAction: TextInputAction.next,
+                validator: (value) => _required(value, 'Enter your name'),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _email,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.mail_outline),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                validator: _validateEmail,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _topic,
+                decoration: const InputDecoration(
+                  labelText: 'Topic',
+                  hintText: 'For example: Arrays',
+                  prefixIcon: Icon(Icons.label_outline),
+                ),
+                textInputAction: TextInputAction.next,
+                validator: (value) => _required(value, 'Enter a topic'),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _question,
+                decoration: const InputDecoration(
+                  labelText: 'Question',
+                  hintText: 'Describe what you need help with',
+                  alignLabelWithHint: true,
+                ),
+                minLines: 3,
+                maxLines: 6,
+                validator: (value) => _required(value, 'Enter your question'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionSummary extends StatelessWidget {
+  const _SessionSummary({required this.session});
+
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      color: theme.colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    session.title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                StatusBadge(status: session.status),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Mentor: ${session.mentorName}',
+              style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
+            ),
+            Text(
+              '${session.waitingCount} waiting',
+              style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
             ),
           ],
         ),

@@ -33,6 +33,34 @@ void main() {
     expect(sessions.first.waitingCount, 5);
   });
 
+  test('a network failure throws a friendly message', () async {
+    final client = MockClient((request) async {
+      throw http.ClientException('connection refused');
+    });
+    final api = ApiService(client, baseUrl: baseUrl);
+
+    expect(
+      api.getSessions(),
+      throwsA(
+        isA<ApiException>().having(
+          (e) => e.message,
+          'message',
+          contains('Could not reach the server'),
+        ),
+      ),
+    );
+  });
+
+  test('getSessions without a status asks for every session', () async {
+    final client = MockClient((request) async {
+      expect(request.url.toString(), '$baseUrl/api/sessions');
+      return http.Response('[]', 200);
+    });
+    final api = ApiService(client, baseUrl: baseUrl);
+
+    expect(await api.getSessions(), isEmpty);
+  });
+
   test('a 409 response throws an exception with the API message', () async {
     final client = MockClient((request) async {
       return http.Response(
