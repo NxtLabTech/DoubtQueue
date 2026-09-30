@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../models/doubt.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/content_width.dart';
-import '../widgets/status_badge.dart';
+import '../widgets/queue_status_card.dart';
+import '../widgets/state_views.dart';
 
 class MyDoubtScreen extends StatefulWidget {
   const MyDoubtScreen({super.key, required this.api, required this.doubt});
@@ -20,6 +22,7 @@ class MyDoubtScreen extends StatefulWidget {
 class _MyDoubtScreenState extends State<MyDoubtScreen> {
   late Doubt _doubt;
   Timer? _timer;
+  bool _refreshing = false;
   String? _error;
 
   @override
@@ -36,6 +39,7 @@ class _MyDoubtScreenState extends State<MyDoubtScreen> {
   }
 
   Future<void> _refresh() async {
+    setState(() => _refreshing = true);
     try {
       final doubt = await widget.api.getDoubt(_doubt.id);
       if (!mounted) return;
@@ -50,33 +54,18 @@ class _MyDoubtScreenState extends State<MyDoubtScreen> {
       if (!mounted) return;
       setState(() => _error = e.message);
     }
-  }
-
-  String get _statusText {
-    switch (_doubt.status) {
-      case 'WAITING':
-        return 'You are number ${_doubt.position} in the queue.';
-      case 'IN_PROGRESS':
-        return 'The mentor is looking at your doubt now.';
-      case 'SOLVED':
-        return 'Your doubt was solved.';
-      case 'SKIPPED':
-        return 'The mentor skipped your doubt. You can join the queue again.';
-      default:
-        return '';
-    }
+    if (!mounted) return;
+    setState(() => _refreshing = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Doubt'),
+        title: const Text('My doubt'),
         actions: [
           IconButton(
-            onPressed: _refresh,
+            onPressed: _refreshing ? null : _refresh,
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
           ),
@@ -84,34 +73,37 @@ class _MyDoubtScreenState extends State<MyDoubtScreen> {
       ),
       body: ContentWidth(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(pagePadding),
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    StatusBadge(status: _doubt.status),
-                    const SizedBox(height: 12),
-                    Text(_statusText, style: textTheme.titleMedium),
-                  ],
-                ),
-              ),
-            ),
+            QueueStatusCard(doubt: _doubt, refreshing: _refreshing),
             if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
+              const SizedBox(height: itemGap),
+              ErrorBanner(message: _error!, onRetry: _refresh),
             ],
-            const SizedBox(height: 16),
-            Text('Your question', style: textTheme.titleSmall),
-            const SizedBox(height: 4),
-            Text(_doubt.topic, style: textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(_doubt.question),
+            const SizedBox(height: sectionGap),
+            _buildDetails(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetails(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Your doubt', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Text('Topic', style: theme.textTheme.labelMedium),
+            Text(_doubt.topic, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: 12),
+            Text('Question', style: theme.textTheme.labelMedium),
+            Text(_doubt.question, style: theme.textTheme.bodyLarge),
           ],
         ),
       ),

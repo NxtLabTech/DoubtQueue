@@ -1,3 +1,5 @@
+import '../utils/time_format.dart';
+
 class Session {
   const Session({
     required this.id,
@@ -5,6 +7,8 @@ class Session {
     required this.mentorName,
     required this.status,
     required this.waitingCount,
+    this.createdAt,
+    this.closedAt,
   });
 
   factory Session.fromJson(Map<String, dynamic> json) {
@@ -14,6 +18,8 @@ class Session {
       mentorName: json['mentor_name'] as String,
       status: json['status'] as String,
       waitingCount: json['waiting_count'] as int? ?? 0,
+      createdAt: parseApiDate(json['created_at'] as String?),
+      closedAt: parseApiDate(json['closed_at'] as String?),
     );
   }
 
@@ -22,6 +28,8 @@ class Session {
   final String mentorName;
   final String status;
   final int waitingCount;
+  final DateTime? createdAt;
+  final DateTime? closedAt;
 
   bool get isOpen => status == 'OPEN';
 }

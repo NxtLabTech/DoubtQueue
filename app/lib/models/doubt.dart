@@ -1,12 +1,17 @@
+import '../utils/time_format.dart';
+
 class Doubt {
   const Doubt({
     required this.id,
     required this.sessionId,
     required this.studentName,
+    required this.studentEmail,
     required this.topic,
     required this.question,
     required this.status,
     this.position,
+    this.createdAt,
+    this.startedAt,
   });
 
   factory Doubt.fromJson(Map<String, dynamic> json) {
@@ -14,21 +19,29 @@ class Doubt {
       id: json['id'] as int,
       sessionId: json['session_id'] as int,
       studentName: json['student_name'] as String,
+      studentEmail: json['student_email'] as String,
       topic: json['topic'] as String,
       question: json['question'] as String,
       status: json['status'] as String,
       position: json['position'] as int?,
+      createdAt: parseApiDate(json['created_at'] as String?),
+      startedAt: parseApiDate(json['started_at'] as String?),
     );
   }
 
   final int id;
   final int sessionId;
   final String studentName;
+  final String studentEmail;
   final String topic;
   final String question;
   final String status;
   final int? position;
+  final DateTime? createdAt;
+  final DateTime? startedAt;
 
   bool get isWaiting => status == 'WAITING';
   bool get isFinished => status == 'SOLVED' || status == 'SKIPPED';
+
+  int get studentsAhead => position == null ? 0 : position! - 1;
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 class ContentWidth extends StatelessWidget {
   const ContentWidth({super.key, required this.child});
 
@@ -10,7 +12,7 @@ class ContentWidth extends StatelessWidget {
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
+        constraints: const BoxConstraints(maxWidth: maxContentWidth),
         child: child,
       ),
     );
