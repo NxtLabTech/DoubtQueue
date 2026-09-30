@@ -1,0 +1,62 @@
+import 'dart:convert';
+
+import 'package:doubtqueue/services/api_service.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+
+void main() {
+  const baseUrl = 'http://test.local';
+
+  test('getSessions returns sessions from the API', () async {
+    final client = MockClient((request) async {
+      expect(request.url.toString(), '$baseUrl/api/sessions?status=OPEN');
+      return http.Response(
+        jsonEncode([
+          {
+            'id': 1,
+            'title': 'PHP Basics Doubt Session',
+            'mentor_name': 'Priya',
+            'status': 'OPEN',
+            'waiting_count': 5,
+          },
+        ]),
+        200,
+      );
+    });
+    final api = ApiService(client, baseUrl: baseUrl);
+
+    final sessions = await api.getSessions(status: 'OPEN');
+
+    expect(sessions, hasLength(1));
+    expect(sessions.first.title, 'PHP Basics Doubt Session');
+    expect(sessions.first.waitingCount, 5);
+  });
+
+  test('a 409 response throws an exception with the API message', () async {
+    final client = MockClient((request) async {
+      return http.Response(
+        jsonEncode({'status': 409, 'message': 'Session with id 2 is closed'}),
+        409,
+      );
+    });
+    final api = ApiService(client, baseUrl: baseUrl);
+
+    expect(
+      api.joinSession(
+        2,
+        name: 'Asha',
+        email: 'asha@example.com',
+        topic: 'Arrays',
+        question: 'How do I loop?',
+      ),
+      throwsA(
+        isA<ApiException>().having(
+          (e) => e.message,
+          'message',
+          contains('Session with id 2 is closed'),
+        ),
+      ),
+    );
+  });
+}

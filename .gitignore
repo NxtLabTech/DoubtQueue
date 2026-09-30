@@ -1,0 +1,35 @@
+# Backend
+backend/vendor/
+backend/data/*.sqlite
+backend/data/*.sqlite-journal
+.phpunit.cache/
+.phpunit.result.cache
+
+# Flutter
+app/build/
+app/.dart_tool/
+app/.flutter-plugins-dependencies
+app/.pub-cache/
+app/.pub/
+app/coverage/
+app/android/.gradle/
+app/android/local.properties
+app/android/key.properties
+app/android/**/*.jks
+app/ios/Pods/
+app/ios/Flutter/Generated.xcconfig
+app/ios/Flutter/flutter_export_environment.sh
+
+# Secrets and local files
+.env
+.env.*
+*.pem
+*.key
+
+# Editors and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
