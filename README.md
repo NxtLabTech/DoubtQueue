@@ -87,6 +87,8 @@ flutter test
 | PATCH | `/api/doubts/{id}/solved` | Mark an in-progress doubt as solved |
 | PATCH | `/api/doubts/{id}/skipped` | Mark an in-progress doubt as skipped |
 
+For request and response examples, see the [API reference](docs/api.md).
+
 Errors are returned as JSON:
 
 ```
