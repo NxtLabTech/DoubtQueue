@@ -4,6 +4,26 @@ DoubtQueue is a small app for mentor office hours. A mentor opens a session, stu
 
 Students can see their position in the queue and whether their doubt was solved or skipped. There is no login.
 
+## Features
+
+There is no login. Anyone can open the app as a student or a mentor.
+
+**Students**
+
+- Search sessions by session or mentor name.
+- Filter sessions by Open, Closed or All, and sort them by Newest or Most waiting.
+- Join a session queue with a name, email, topic and question.
+- See your position in the queue and how many students are ahead of you.
+- The doubt screen refreshes every 10 seconds, so you see when it is your turn and when your doubt is solved or skipped.
+
+**Mentors**
+
+- Start a session with a title and a mentor name, or select an open session.
+- See statistics for waiting, in progress, solved and skipped doubts.
+- Take the next student, then mark the doubt as solved or skip it.
+- Confirm before you skip a doubt or close a session.
+- Close a session so no more students can join.
+
 ## Technology
 
 - Backend: plain PHP 8.2+, PDO, SQLite (default), MySQL (optional), Composer, PHPUnit
