@@ -14,11 +14,34 @@ class DatabaseSetup
 
     public function run(): void
     {
+        if ($this->isInitialized()) {
+            return;
+        }
+
         $this->createTables();
 
         if ($this->isEmpty()) {
             $this->insertSampleData();
         }
+    }
+
+    public function isInitialized(): bool
+    {
+        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        if ($driver === 'mysql') {
+            $stmt = $this->pdo->prepare(
+                'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?'
+            );
+        } else {
+            $stmt = $this->pdo->prepare(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?"
+            );
+        }
+
+        $stmt->execute(['sessions']);
+
+        return (bool) $stmt->fetchColumn();
     }
 
     public function createTables(): void
