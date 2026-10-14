@@ -1,4 +1,5 @@
 import 'package:doubtqueue/screens/mentor_screen.dart';
+import 'package:doubtqueue/widgets/queue_item_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -73,6 +74,36 @@ void main() {
     expect(find.text('Ben'), findsOneWidget);
     expect(find.text('1'), findsWidgets);
     expect(find.text('No doubt is currently in progress.'), findsOneWidget);
+  });
+
+  Finder nextUpOn(String name) {
+    return find.descendant(
+      of: find.ancestor(
+        of: find.text(name),
+        matching: find.byType(QueueItemCard),
+      ),
+      matching: find.text('Next up'),
+    );
+  }
+
+  testWidgets('marks only the first waiting student as next up', (
+    tester,
+  ) async {
+    await pumpMentor(tester, backendWithQueue(waiting: 3));
+    await selectSession(tester);
+
+    expect(find.text('Next up'), findsOneWidget);
+    expect(nextUpOn('Asha'), findsOneWidget);
+    expect(nextUpOn('Ben'), findsNothing);
+    expect(nextUpOn('Chitra'), findsNothing);
+
+    await tester.tap(find.text('Take next student'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Next up'), findsOneWidget);
+    expect(nextUpOn('Asha'), findsNothing);
+    expect(nextUpOn('Ben'), findsOneWidget);
+    expect(nextUpOn('Chitra'), findsNothing);
   });
 
   testWidgets('shows an empty queue state', (tester) async {

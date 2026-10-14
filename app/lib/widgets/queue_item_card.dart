@@ -30,11 +30,22 @@ class QueueItemCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    doubt.studentName,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          doubt.studentName,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (position == 1) ...[
+                        const SizedBox(width: 8),
+                        const _NextUpLabel(),
+                      ],
+                    ],
                   ),
                   Text(
                     doubt.topic,
@@ -61,6 +72,30 @@ class QueueItemCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NextUpLabel extends StatelessWidget {
+  const _NextUpLabel();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: colors.primaryContainer,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        'Next up',
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: colors.onPrimaryContainer,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
