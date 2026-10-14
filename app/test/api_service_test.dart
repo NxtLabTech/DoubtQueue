@@ -61,6 +61,34 @@ void main() {
     expect(await api.getSessions(), isEmpty);
   });
 
+  test('a base URL without a trailing slash is unchanged', () async {
+    await _expectSessionsUrl(
+      'http://localhost:8000',
+      'http://localhost:8000/api/sessions',
+    );
+  });
+
+  test('one trailing slash does not produce a double slash', () async {
+    await _expectSessionsUrl(
+      'http://localhost:8000/',
+      'http://localhost:8000/api/sessions',
+    );
+  });
+
+  test('several trailing slashes are removed', () async {
+    await _expectSessionsUrl(
+      'http://localhost:8000//',
+      'http://localhost:8000/api/sessions',
+    );
+  });
+
+  test('a base URL with a path prefix keeps the prefix', () async {
+    await _expectSessionsUrl(
+      'http://host/doubtqueue/',
+      'http://host/doubtqueue/api/sessions',
+    );
+  });
+
   test('a 409 response throws an exception with the API message', () async {
     final client = MockClient((request) async {
       return http.Response(
@@ -87,4 +115,14 @@ void main() {
       ),
     );
   });
+}
+
+Future<void> _expectSessionsUrl(String baseUrl, String expected) async {
+  final client = MockClient((request) async {
+    expect(request.url.toString(), expected);
+    return http.Response('[]', 200);
+  });
+  final api = ApiService(client, baseUrl: baseUrl);
+
+  expect(await api.getSessions(), isEmpty);
 }

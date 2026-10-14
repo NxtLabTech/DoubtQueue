@@ -16,10 +16,15 @@ class ApiException implements Exception {
 }
 
 class ApiService {
-  ApiService(this._client, {this.baseUrl = apiBaseUrl});
+  ApiService(this._client, {String baseUrl = apiBaseUrl})
+      : baseUrl = _withoutTrailingSlashes(baseUrl);
 
   final http.Client _client;
   final String baseUrl;
+
+  static String _withoutTrailingSlashes(String url) {
+    return url.replaceFirst(RegExp(r'/+$'), '');
+  }
 
   Future<List<Session>> getSessions({String? status}) async {
     final query = status == null ? '' : '?status=$status';
