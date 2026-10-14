@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/session.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
+import '../utils/waiting_text.dart';
 import 'status_badge.dart';
 
 class SessionCard extends StatelessWidget {
@@ -36,7 +37,7 @@ class SessionCard extends StatelessWidget {
             ),
             _InfoRow(
               icon: Icons.groups_outlined,
-              text: _waitingText(session.waitingCount),
+              text: waitingText(session.waitingCount),
             ),
             if (session.createdAt != null)
               _InfoRow(
@@ -85,13 +86,6 @@ class SessionCard extends StatelessWidget {
       style: Theme.of(context).textTheme.bodyMedium
           ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
     );
-  }
-
-  String _waitingText(int count) {
-    if (count == 0) {
-      return 'No students waiting';
-    }
-    return count == 1 ? '1 student waiting' : '$count students waiting';
   }
 }
 

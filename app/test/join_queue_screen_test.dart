@@ -5,7 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fake_backend.dart';
 
-Future<FakeBackend> pumpJoin(WidgetTester tester, {bool closed = false}) async {
+Future<FakeBackend> pumpJoin(
+  WidgetTester tester, {
+  bool closed = false,
+  int waiting = 0,
+}) async {
   tester.view.physicalSize = const Size(800, 2000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -16,7 +20,7 @@ Future<FakeBackend> pumpJoin(WidgetTester tester, {bool closed = false}) async {
   }
   final session = Session.fromJson({
     ...backend.sessions.first,
-    'waiting_count': 0,
+    'waiting_count': waiting,
   });
 
   await tester.pumpWidget(
@@ -42,6 +46,18 @@ Future<void> submit(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('the summary uses the shared waiting wording', (tester) async {
+    await pumpJoin(tester);
+    expect(find.text('No students waiting'), findsOneWidget);
+    expect(find.text('0 waiting'), findsNothing);
+
+    await pumpJoin(tester, waiting: 1);
+    expect(find.text('1 student waiting'), findsOneWidget);
+
+    await pumpJoin(tester, waiting: 5);
+    expect(find.text('5 students waiting'), findsOneWidget);
+  });
+
   testWidgets('shows validation messages for an empty form', (tester) async {
     await pumpJoin(tester);
 

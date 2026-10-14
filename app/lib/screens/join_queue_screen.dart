@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/session.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/waiting_text.dart';
 import '../widgets/content_width.dart';
 import '../widgets/state_views.dart';
 import '../widgets/status_badge.dart';
@@ -218,7 +219,7 @@ class _SessionSummary extends StatelessWidget {
               style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
             ),
             Text(
-              '${session.waitingCount} waiting',
+              waitingText(session.waitingCount),
               style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
             ),
           ],
