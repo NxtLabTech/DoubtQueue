@@ -180,6 +180,67 @@ void main() {
     expect(find.text('Dart Basics (Meera)'), findsOneWidget);
   });
 
+  testWidgets('editing either field removes the session created message', (
+    tester,
+  ) async {
+    final backend = FakeBackend(sessions: []);
+    await pumpMentor(tester, backend);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'Dart Basics');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Meera');
+    await tester.tap(find.text('Start session'));
+    await tester.pumpAndSettle();
+    expect(find.text('Session created. It is selected below.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'SQL');
+    await tester.pump();
+    expect(find.text('Session created. It is selected below.'), findsNothing);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'SQL Practice');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Arjun');
+    await tester.tap(find.text('Start session'));
+    await tester.pumpAndSettle();
+    expect(find.text('Session created. It is selected below.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).at(1), 'Meera');
+    await tester.pump();
+    expect(find.text('Session created. It is selected below.'), findsNothing);
+  });
+
+  testWidgets('validation errors are not shown with the success message', (
+    tester,
+  ) async {
+    await pumpMentor(tester, FakeBackend(sessions: []));
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'Dart Basics');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Meera');
+    await tester.tap(find.text('Start session'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Start session'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enter a session title'), findsOneWidget);
+    expect(find.text('Enter your name'), findsOneWidget);
+    expect(find.text('Session created. It is selected below.'), findsNothing);
+  });
+
+  testWidgets('editing a field removes an API error', (tester) async {
+    final backend = FakeBackend(sessions: []);
+    await pumpMentor(tester, backend);
+
+    backend.failRequests = true;
+    await tester.enterText(find.byType(TextFormField).at(0), 'Dart Basics');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Meera');
+    await tester.tap(find.text('Start session'));
+    await tester.pumpAndSettle();
+    expect(find.text('Something went wrong'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'Dart');
+    await tester.pump();
+    expect(find.text('Something went wrong'), findsNothing);
+  });
+
   testWidgets('the queue refresh button loads new students', (tester) async {
     final backend = backendWithQueue(waiting: 1);
     await pumpMentor(tester, backend);

@@ -28,8 +28,19 @@ class _CreateSessionCardState extends State<CreateSessionCard> {
     super.dispose();
   }
 
+  void _clearMessages() {
+    if (_error == null && _success == null) return;
+    setState(() {
+      _error = null;
+      _success = null;
+    });
+  }
+
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      _clearMessages();
+      return;
+    }
 
     setState(() {
       _creating = true;
@@ -73,6 +84,7 @@ class _CreateSessionCardState extends State<CreateSessionCard> {
                   prefixIcon: Icon(Icons.title),
                 ),
                 textInputAction: TextInputAction.next,
+                onChanged: (_) => _clearMessages(),
                 validator: (value) => _required(value, 'Enter a session title'),
               ),
               const SizedBox(height: 16),
@@ -83,6 +95,7 @@ class _CreateSessionCardState extends State<CreateSessionCard> {
                   hintText: 'For example: Priya',
                   prefixIcon: Icon(Icons.person_outline),
                 ),
+                onChanged: (_) => _clearMessages(),
                 validator: (value) => _required(value, 'Enter your name'),
               ),
               if (_error != null) ...[
