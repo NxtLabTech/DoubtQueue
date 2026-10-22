@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/validators.dart';
+import 'loading_indicator.dart';
 import 'state_views.dart';
 
 class CreateSessionCard extends StatefulWidget {
@@ -73,7 +75,8 @@ class _CreateSessionCardState extends State<CreateSessionCard> {
                   prefixIcon: Icon(Icons.title),
                 ),
                 textInputAction: TextInputAction.next,
-                validator: (value) => _required(value, 'Enter a session title'),
+                validator: (value) =>
+                    requiredField(value, 'Enter a session title'),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -83,7 +86,7 @@ class _CreateSessionCardState extends State<CreateSessionCard> {
                   hintText: 'For example: Priya',
                   prefixIcon: Icon(Icons.person_outline),
                 ),
-                validator: (value) => _required(value, 'Enter your name'),
+                validator: (value) => requiredField(value, 'Enter your name'),
               ),
               if (_error != null) ...[
                 const SizedBox(height: itemGap),
@@ -99,11 +102,7 @@ class _CreateSessionCardState extends State<CreateSessionCard> {
                 child: FilledButton.icon(
                   onPressed: _creating ? null : _submit,
                   icon: _creating
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                      ? const LoadingIndicator()
                       : const Icon(Icons.add),
                   label: Text(_creating ? 'Creating...' : 'Start session'),
                 ),
@@ -113,9 +112,5 @@ class _CreateSessionCardState extends State<CreateSessionCard> {
         ),
       ),
     );
-  }
-
-  String? _required(String? value, String message) {
-    return value == null || value.trim().isEmpty ? message : null;
   }
 }

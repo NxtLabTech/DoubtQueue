@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../models/session.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/validators.dart';
 import '../widgets/content_width.dart';
+import '../widgets/loading_indicator.dart';
 import '../widgets/state_views.dart';
 import '../widgets/status_badge.dart';
 import 'my_doubt_screen.dart';
@@ -68,10 +70,6 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
     }
   }
 
-  String? _required(String? value, String message) {
-    return value == null || value.trim().isEmpty ? message : null;
-  }
-
   String? _validateEmail(String? value) {
     final email = value?.trim() ?? '';
     if (email.isEmpty) {
@@ -102,11 +100,7 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
             FilledButton.icon(
               onPressed: _submitting ? null : _submit,
               icon: _submitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                  ? const LoadingIndicator()
                   : const Icon(Icons.login),
               label: Text(_submitting ? 'Joining...' : 'Join queue'),
             ),
@@ -137,7 +131,7 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
                   prefixIcon: Icon(Icons.person_outline),
                 ),
                 textInputAction: TextInputAction.next,
-                validator: (value) => _required(value, 'Enter your name'),
+                validator: (value) => requiredField(value, 'Enter your name'),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -159,7 +153,7 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
                   prefixIcon: Icon(Icons.label_outline),
                 ),
                 textInputAction: TextInputAction.next,
-                validator: (value) => _required(value, 'Enter a topic'),
+                validator: (value) => requiredField(value, 'Enter a topic'),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -171,7 +165,8 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
                 ),
                 minLines: 3,
                 maxLines: 6,
-                validator: (value) => _required(value, 'Enter your question'),
+                validator: (value) =>
+                    requiredField(value, 'Enter your question'),
               ),
             ],
           ),
