@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/doubt.dart';
+import '../models/session.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/content_width.dart';
@@ -10,10 +11,16 @@ import '../widgets/queue_status_card.dart';
 import '../widgets/state_views.dart';
 
 class MyDoubtScreen extends StatefulWidget {
-  const MyDoubtScreen({super.key, required this.api, required this.doubt});
+  const MyDoubtScreen({
+    super.key,
+    required this.api,
+    required this.doubt,
+    this.session,
+  });
 
   final ApiService api;
   final Doubt doubt;
+  final Session? session;
 
   @override
   State<MyDoubtScreen> createState() => _MyDoubtScreenState();
@@ -75,6 +82,10 @@ class _MyDoubtScreenState extends State<MyDoubtScreen> {
         child: ListView(
           padding: const EdgeInsets.all(pagePadding),
           children: [
+            if (widget.session != null) ...[
+              _SessionCard(session: widget.session!),
+              const SizedBox(height: itemGap),
+            ],
             QueueStatusCard(doubt: _doubt, refreshing: _refreshing),
             if (_error != null) ...[
               const SizedBox(height: itemGap),
@@ -104,6 +115,54 @@ class _MyDoubtScreenState extends State<MyDoubtScreen> {
             const SizedBox(height: 12),
             Text('Question', style: theme.textTheme.labelMedium),
             Text(_doubt.question, style: theme.textTheme.bodyLarge),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionCard extends StatelessWidget {
+  const _SessionCard({required this.session});
+
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              session.title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  size: 18,
+                  color: colors.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Mentor: ${session.mentorName}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

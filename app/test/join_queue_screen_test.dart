@@ -75,6 +75,8 @@ void main() {
     await submit(tester);
 
     expect(find.text('My doubt'), findsOneWidget);
+    expect(find.text('PHP Basics Doubt Session'), findsOneWidget);
+    expect(find.text('Mentor: Priya'), findsOneWidget);
     expect(find.text('Your position'), findsOneWidget);
     expect(find.text('Students ahead of you: 0'), findsOneWidget);
 
