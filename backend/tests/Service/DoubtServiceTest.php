@@ -86,6 +86,36 @@ class DoubtServiceTest extends TestCase
         $this->assertSame(1, $this->doubts->get($second['id'])['position']);
     }
 
+    public function testNextOnClosedSessionThrowsAndKeepsDoubtsWaiting(): void
+    {
+        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $first = $this->doubts->join($session['id'], $this->validData());
+        $second = $this->doubts->join($session['id'], ['student_name' => 'Ben'] + $this->validData());
+        $this->sessions->close($session['id']);
+
+        try {
+            $this->doubts->next($session['id']);
+            $this->fail('Expected SessionClosedException');
+        } catch (SessionClosedException $e) {
+            $this->assertSame("Session with id {$session['id']} is closed", $e->getMessage());
+        }
+
+        foreach ([$first, $second] as $doubt) {
+            $reloaded = $this->doubts->get($doubt['id']);
+            $this->assertSame('WAITING', $reloaded['status']);
+            $this->assertNull($reloaded['started_at']);
+        }
+        $this->assertSame(1, $this->doubts->get($first['id'])['position']);
+        $this->assertSame(2, $this->doubts->stats($session['id'])['WAITING']);
+    }
+
+    public function testNextOnMissingSessionThrowsNotFound(): void
+    {
+        $this->expectException(NotFoundException::class);
+
+        $this->doubts->next(999);
+    }
+
     public function testSolvedAndSkippedSetFinishedAt(): void
     {
         $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
