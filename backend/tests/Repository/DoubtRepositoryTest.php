@@ -83,6 +83,20 @@ class DoubtRepositoryTest extends TestCase
         $this->assertSame(2, $this->doubts->position($second));
     }
 
+    public function testHasInProgressDetectsActiveDoubt(): void
+    {
+        $this->assertFalse($this->doubts->hasInProgress($this->sessionId));
+
+        $doubt = $this->save('Asha', '2026-01-01 10:01:00');
+        $this->assertFalse($this->doubts->hasInProgress($this->sessionId));
+
+        $this->doubts->markStarted($doubt['id'], '2026-01-01 10:02:00');
+        $this->assertTrue($this->doubts->hasInProgress($this->sessionId));
+
+        $this->doubts->markFinished($doubt['id'], 'SOLVED', '2026-01-01 10:05:00');
+        $this->assertFalse($this->doubts->hasInProgress($this->sessionId));
+    }
+
     private function save(string $name, string $createdAt): array
     {
         return $this->doubts->save(

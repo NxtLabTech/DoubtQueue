@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DoubtQueue\Service;
 
+use DoubtQueue\Exception\DoubtInProgressException;
 use DoubtQueue\Exception\NotFoundException;
 use DoubtQueue\Exception\SessionClosedException;
 use DoubtQueue\Exception\ValidationException;
@@ -59,6 +60,11 @@ class DoubtService
     public function next(int $sessionId): array
     {
         $this->findSession($sessionId);
+
+        if ($this->doubts->hasInProgress($sessionId)) {
+            throw new DoubtInProgressException('Finish the current doubt before taking the next one');
+        }
+
         $doubt = $this->doubts->findOldestWaiting($sessionId);
 
         if ($doubt === null) {
