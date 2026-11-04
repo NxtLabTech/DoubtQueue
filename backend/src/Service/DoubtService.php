@@ -58,7 +58,12 @@ class DoubtService
 
     public function next(int $sessionId): array
     {
-        $this->findSession($sessionId);
+        $session = $this->findSession($sessionId);
+
+        if ($session['status'] !== SessionStatus::Open->value) {
+            throw new SessionClosedException("Session with id $sessionId is closed");
+        }
+
         $doubt = $this->doubts->findOldestWaiting($sessionId);
 
         if ($doubt === null) {
