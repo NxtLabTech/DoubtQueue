@@ -34,6 +34,7 @@ class _MentorScreenState extends State<MentorScreen> {
   String? _loadError;
   String? _actionError;
   String? _notice;
+  String? _doubtNotice;
 
   Session? get _selected {
     for (final session in _sessions) {
@@ -68,6 +69,7 @@ class _MentorScreenState extends State<MentorScreen> {
       _busy = true;
       _actionError = null;
       _notice = null;
+      _doubtNotice = null;
     });
     try {
       await action();
@@ -124,7 +126,10 @@ class _MentorScreenState extends State<MentorScreen> {
   Future<void> _takeNext() async {
     await _run(() async {
       final doubt = await widget.api.takeNext(_selectedId!);
-      setState(() => _current = doubt);
+      setState(() {
+        _current = doubt;
+        _doubtNotice = 'Now helping ${doubt.studentName}';
+      });
       await _loadDetails();
     });
   }
@@ -133,7 +138,10 @@ class _MentorScreenState extends State<MentorScreen> {
     final id = _current!.id;
     await _run(() async {
       await widget.api.markSolved(id);
-      setState(() => _current = null);
+      setState(() {
+        _current = null;
+        _doubtNotice = 'Marked as solved';
+      });
       await _loadDetails();
     });
   }
@@ -150,7 +158,10 @@ class _MentorScreenState extends State<MentorScreen> {
     final id = _current!.id;
     await _run(() async {
       await widget.api.markSkipped(id);
-      setState(() => _current = null);
+      setState(() {
+        _current = null;
+        _doubtNotice = 'Doubt skipped';
+      });
       await _loadDetails();
     });
   }
@@ -264,26 +275,31 @@ class _MentorScreenState extends State<MentorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InputDecorator(
-              decoration: const InputDecoration(labelText: 'Open session'),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  value: _selectedId,
-                  isExpanded: true,
-                  hint: const Text('Select a session'),
-                  items: [
-                    for (final item in _sessions)
-                      DropdownMenuItem(
-                        value: item.id,
-                        child: Text(
-                          '${item.title} (${item.mentorName})',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: _busy ? null : _selectSession,
-                ),
+            Text(
+              'Open session',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              key: ValueKey(_selectedId),
+              initialValue: _selectedId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                hintText: 'Select a session',
+              ),
+              items: [
+                for (final item in _sessions)
+                  DropdownMenuItem(
+                    value: item.id,
+                    child: Text(
+                      '${item.title} (${item.mentorName})',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: _busy ? null : _selectSession,
             ),
             if (session != null) ...[
               const SizedBox(height: 16),
@@ -313,6 +329,10 @@ class _MentorScreenState extends State<MentorScreen> {
     return [
       const SectionHeader(title: 'Current doubt'),
       const SizedBox(height: itemGap),
+      if (_doubtNotice != null) ...[
+        SuccessBanner(message: _doubtNotice!),
+        const SizedBox(height: itemGap),
+      ],
       if (current != null)
         CurrentDoubtCard(
           doubt: current,

@@ -105,12 +105,15 @@ void main() {
     expect(find.text('Take next student'), findsNothing);
     expect(backend.doubts.first['status'], 'IN_PROGRESS');
     expect(find.text('1 waiting'), findsOneWidget);
+    expect(find.text('Now helping Asha'), findsOneWidget);
 
     await tester.tap(find.text('Mark solved'));
     await tester.pumpAndSettle();
 
     expect(backend.doubts.first['status'], 'SOLVED');
     expect(find.text('No doubt is currently in progress.'), findsOneWidget);
+    expect(find.text('Now helping Asha'), findsNothing);
+    expect(find.text('Marked as solved'), findsOneWidget);
   });
 
   testWidgets('skipping asks for confirmation first', (tester) async {
@@ -119,6 +122,7 @@ void main() {
     await selectSession(tester);
     await tester.tap(find.text('Take next student'));
     await tester.pumpAndSettle();
+    expect(find.text('Now helping Asha'), findsOneWidget);
 
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
@@ -127,12 +131,38 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(backend.doubts.first['status'], 'IN_PROGRESS');
+    expect(find.text('Doubt skipped'), findsNothing);
+    expect(find.text('Now helping Asha'), findsOneWidget);
 
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Skip doubt'));
     await tester.pumpAndSettle();
     expect(backend.doubts.first['status'], 'SKIPPED');
+    expect(find.text('Now helping Asha'), findsNothing);
+    expect(find.text('Doubt skipped'), findsOneWidget);
+  });
+
+  testWidgets('the next action removes the previous doubt confirmation', (
+    tester,
+  ) async {
+    final backend = backendWithQueue();
+    await pumpMentor(tester, backend);
+    await selectSession(tester);
+
+    await tester.tap(find.text('Take next student'));
+    await tester.pumpAndSettle();
+    expect(find.text('Now helping Asha'), findsOneWidget);
+
+    await tester.tap(find.text('Mark solved'));
+    await tester.pumpAndSettle();
+    expect(find.text('Now helping Asha'), findsNothing);
+    expect(find.text('Marked as solved'), findsOneWidget);
+
+    await tester.tap(find.text('Take next student'));
+    await tester.pumpAndSettle();
+    expect(find.text('Marked as solved'), findsNothing);
+    expect(find.text('Now helping Ben'), findsOneWidget);
   });
 
   testWidgets('closing a session asks for confirmation first', (tester) async {
