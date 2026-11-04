@@ -71,6 +71,35 @@ class ApiService {
     return Doubt.fromJson(data as Map<String, dynamic>);
   }
 
+  Future<Doubt?> getCurrentDoubt(int sessionId) async {
+    final request = http.Request(
+      'GET',
+      Uri.parse('$baseUrl/api/sessions/$sessionId/current'),
+    );
+
+    final http.Response response;
+    try {
+      response = await http.Response.fromStream(await _client.send(request));
+    } on http.ClientException {
+      throw const ApiException(
+        'Could not reach the server. Check that the backend is running.',
+      );
+    }
+
+    if (response.statusCode == 404) {
+      return null;
+    }
+
+    final decoded = _decode(response);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return Doubt.fromJson(decoded as Map<String, dynamic>);
+    }
+    if (decoded is Map<String, dynamic> && decoded['message'] is String) {
+      throw ApiException(decoded['message'] as String);
+    }
+    throw ApiException('Request failed with status ${response.statusCode}');
+  }
+
   Future<Map<String, int>> getStats(int sessionId) async {
     final data = await _send('GET', '/api/sessions/$sessionId/stats');
     return (data as Map<String, dynamic>).map(

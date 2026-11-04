@@ -97,10 +97,12 @@ class _MentorScreenState extends State<MentorScreen> {
     final id = _selectedId!;
     final queue = await widget.api.getQueue(id);
     final stats = await widget.api.getStats(id);
+    final current = await widget.api.getCurrentDoubt(id);
     if (!mounted) return;
     setState(() {
       _queue = queue;
       _stats = stats;
+      _current = current;
     });
   }
 

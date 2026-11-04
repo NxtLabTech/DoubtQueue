@@ -87,4 +87,50 @@ void main() {
       ),
     );
   });
+
+  test('getCurrentDoubt returns the in-progress doubt', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'GET');
+      expect(request.url.toString(), '$baseUrl/api/sessions/1/current');
+      return http.Response(
+        jsonEncode({
+          'id': 7,
+          'session_id': 1,
+          'student_name': 'Asha',
+          'student_email': 'asha@example.com',
+          'topic': 'Arrays',
+          'question': 'How do loops work?',
+          'status': 'IN_PROGRESS',
+          'position': null,
+          'created_at': '2026-01-01 10:05:00',
+          'started_at': '2026-01-01 10:10:00',
+        }),
+        200,
+      );
+    });
+    final api = ApiService(client, baseUrl: baseUrl);
+
+    final doubt = await api.getCurrentDoubt(1);
+
+    expect(doubt, isNotNull);
+    expect(doubt!.id, 7);
+    expect(doubt.studentName, 'Asha');
+    expect(doubt.status, 'IN_PROGRESS');
+  });
+
+  test('getCurrentDoubt returns null when no doubt is in progress', () async {
+    final client = MockClient((request) async {
+      expect(request.url.toString(), '$baseUrl/api/sessions/1/current');
+      return http.Response(
+        jsonEncode({
+          'status': 404,
+          'message': 'Session with id 1 has no doubt in progress',
+        }),
+        404,
+      );
+    });
+    final api = ApiService(client, baseUrl: baseUrl);
+
+    expect(await api.getCurrentDoubt(1), isNull);
+  });
 }

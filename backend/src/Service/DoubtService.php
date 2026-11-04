@@ -70,6 +70,18 @@ class DoubtService
         return $this->get($doubt['id']);
     }
 
+    public function current(int $sessionId): array
+    {
+        $this->findSession($sessionId);
+        $doubt = $this->doubts->findInProgress($sessionId);
+
+        if ($doubt === null) {
+            throw new NotFoundException("Session with id $sessionId has no doubt in progress");
+        }
+
+        return $this->withPosition($doubt);
+    }
+
     public function markSolved(int $id): array
     {
         return $this->finish($id, DoubtStatus::Solved);

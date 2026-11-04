@@ -59,6 +59,18 @@ class DoubtRepository
         return $row === false ? null : $this->format($row);
     }
 
+    public function findInProgress(int $sessionId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM doubts WHERE session_id = ? AND status = 'IN_PROGRESS'
+             ORDER BY started_at ASC, id ASC LIMIT 1"
+        );
+        $stmt->execute([$sessionId]);
+        $row = $stmt->fetch();
+
+        return $row === false ? null : $this->format($row);
+    }
+
     public function position(array $doubt): int
     {
         $stmt = $this->pdo->prepare(
