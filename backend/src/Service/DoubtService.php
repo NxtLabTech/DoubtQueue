@@ -101,6 +101,15 @@ class DoubtService
             throw new ValidationException('Only a doubt that is in progress can be finished');
         }
 
+        // A closed session keeps the data it had when it was closed.
+        $session = $this->findSession((int) $doubt['session_id']);
+
+        if ($session['status'] !== SessionStatus::Open->value) {
+            throw new SessionClosedException(
+                "Session with id {$session['id']} is closed, so its doubts can no longer be solved or skipped"
+            );
+        }
+
         $this->doubts->markFinished($id, $status->value, gmdate('Y-m-d H:i:s'));
 
         return $this->get($id);

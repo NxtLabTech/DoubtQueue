@@ -111,11 +111,55 @@ class DoubtServiceTest extends TestCase
         $this->doubts->markSolved($doubt['id']);
     }
 
+    public function testSolvingDoubtInClosedSessionThrows(): void
+    {
+        $doubt = $this->inProgressDoubtInClosedSession();
+
+        try {
+            $this->doubts->markSolved($doubt['id']);
+            $this->fail('Expected SessionClosedException');
+        } catch (SessionClosedException) {
+        }
+
+        $this->assertDoubtUnchanged($doubt['id']);
+    }
+
+    public function testSkippingDoubtInClosedSessionThrows(): void
+    {
+        $doubt = $this->inProgressDoubtInClosedSession();
+
+        try {
+            $this->doubts->markSkipped($doubt['id']);
+            $this->fail('Expected SessionClosedException');
+        } catch (SessionClosedException) {
+        }
+
+        $this->assertDoubtUnchanged($doubt['id']);
+    }
+
     public function testMissingDoubtThrows(): void
     {
         $this->expectException(NotFoundException::class);
 
         $this->doubts->get(999);
+    }
+
+    private function inProgressDoubtInClosedSession(): array
+    {
+        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $this->doubts->join($session['id'], $this->validData());
+        $doubt = $this->doubts->next($session['id']);
+        $this->sessions->close($session['id']);
+
+        return $doubt;
+    }
+
+    private function assertDoubtUnchanged(int $id): void
+    {
+        $doubt = $this->doubts->get($id);
+
+        $this->assertSame('IN_PROGRESS', $doubt['status']);
+        $this->assertNull($doubt['finished_at']);
     }
 
     private function validData(): array
