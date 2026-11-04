@@ -90,6 +90,33 @@ void main() {
     expect(button.onPressed, isNull);
   });
 
+  testWidgets('restores an in-progress doubt when the session loads', (
+    tester,
+  ) async {
+    final backend = backendWithQueue(waiting: 1);
+    backend.doubts.first['status'] = 'IN_PROGRESS';
+    backend.doubts.first['started_at'] = '2026-01-01 10:10:00';
+    await pumpMentor(tester, backend);
+    await selectSession(tester);
+
+    expect(find.text('asha@example.com'), findsOneWidget);
+    expect(find.text('Mark solved'), findsOneWidget);
+    expect(find.text('Skip'), findsOneWidget);
+    expect(find.text('Take next student'), findsNothing);
+    expect(find.text('No doubt is currently in progress.'), findsNothing);
+  });
+
+  testWidgets('shows the empty current doubt state when none is in progress', (
+    tester,
+  ) async {
+    await pumpMentor(tester, backendWithQueue(waiting: 2));
+    await selectSession(tester);
+
+    expect(find.text('No doubt is currently in progress.'), findsOneWidget);
+    expect(find.text('Take next student'), findsOneWidget);
+    expect(find.text('Mark solved'), findsNothing);
+  });
+
   testWidgets('take next shows the current doubt and mark solved clears it', (
     tester,
   ) async {

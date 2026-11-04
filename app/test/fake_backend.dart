@@ -104,7 +104,7 @@ class FakeBackend {
     }
 
     final sessionMatch = RegExp(
-      r'^/api/sessions/(\d+)/(doubts|queue|stats|next|close)$',
+      r'^/api/sessions/(\d+)/(doubts|queue|stats|next|close|current)$',
     ).firstMatch(path);
     if (sessionMatch != null) {
       return _handleSession(
@@ -154,6 +154,22 @@ class FakeBackend {
         waiting.first['status'] = 'IN_PROGRESS';
         waiting.first['started_at'] = '2026-01-01 10:10:00';
         return _json(_withPosition(waiting.first));
+      case 'current':
+        final inProgress = _doubtsOf(id, 'IN_PROGRESS');
+        if (inProgress.isEmpty) {
+          return _json({
+            'status': 404,
+            'message': 'Session with id $id has no doubt in progress',
+          }, 404);
+        }
+        inProgress.sort((a, b) {
+          final byStarted = ((a['started_at'] as String?) ?? '').compareTo(
+            (b['started_at'] as String?) ?? '',
+          );
+          if (byStarted != 0) return byStarted;
+          return (a['id'] as int).compareTo(b['id'] as int);
+        });
+        return _json(_withPosition(inProgress.first));
       default:
         session['status'] = 'CLOSED';
         return _json(_sessionJson(session));

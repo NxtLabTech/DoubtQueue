@@ -29,6 +29,11 @@ class DoubtController
         return new Response(200, $this->doubts->next($params['id']));
     }
 
+    public function current(Request $request, array $params): Response
+    {
+        return new Response(200, $this->doubts->current($params['id']));
+    }
+
     public function stats(Request $request, array $params): Response
     {
         return new Response(200, $this->doubts->stats($params['id']));

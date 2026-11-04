@@ -46,6 +46,7 @@ try {
     $router->add('POST', '/api/sessions/{id}/doubts', [$doubts, 'join']);
     $router->add('GET', '/api/sessions/{id}/queue', [$doubts, 'queue']);
     $router->add('POST', '/api/sessions/{id}/next', [$doubts, 'next']);
+    $router->add('GET', '/api/sessions/{id}/current', [$doubts, 'current']);
     $router->add('GET', '/api/sessions/{id}/stats', [$doubts, 'stats']);
     $router->add('GET', '/api/doubts/{id}', [$doubts, 'get']);
     $router->add('PATCH', '/api/doubts/{id}/solved', [$doubts, 'solved']);

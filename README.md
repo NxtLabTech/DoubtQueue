@@ -82,6 +82,7 @@ flutter test
 | POST | `/api/sessions/{id}/doubts` | Join a session (`student_name`, `student_email`, `topic`, `question`) |
 | GET | `/api/sessions/{id}/queue` | Waiting doubts, oldest first |
 | POST | `/api/sessions/{id}/next` | Take the oldest waiting doubt |
+| GET | `/api/sessions/{id}/current` | Doubt currently in progress, or 404 |
 | GET | `/api/sessions/{id}/stats` | Doubt counts by status |
 | GET | `/api/doubts/{id}` | Get one doubt, with `position` while it is waiting |
 | PATCH | `/api/doubts/{id}/solved` | Mark an in-progress doubt as solved |

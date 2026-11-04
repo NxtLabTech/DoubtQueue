@@ -118,6 +118,48 @@ class DoubtServiceTest extends TestCase
         $this->doubts->get(999);
     }
 
+    public function testCurrentReturnsInProgressDoubt(): void
+    {
+        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $this->doubts->join($session['id'], $this->validData());
+        $taken = $this->doubts->next($session['id']);
+
+        $current = $this->doubts->current($session['id']);
+
+        $this->assertSame($taken['id'], $current['id']);
+        $this->assertSame('IN_PROGRESS', $current['status']);
+        $this->assertNull($current['position']);
+    }
+
+    public function testCurrentThrowsWhenNoDoubtIsInProgress(): void
+    {
+        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $this->doubts->join($session['id'], $this->validData());
+
+        $this->expectException(NotFoundException::class);
+
+        $this->doubts->current($session['id']);
+    }
+
+    public function testCurrentThrowsForUnknownSession(): void
+    {
+        $this->expectException(NotFoundException::class);
+
+        $this->doubts->current(999);
+    }
+
+    public function testCurrentThrowsAfterDoubtIsFinished(): void
+    {
+        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $this->doubts->join($session['id'], $this->validData());
+        $taken = $this->doubts->next($session['id']);
+        $this->doubts->markSolved($taken['id']);
+
+        $this->expectException(NotFoundException::class);
+
+        $this->doubts->current($session['id']);
+    }
+
     private function validData(): array
     {
         return [
