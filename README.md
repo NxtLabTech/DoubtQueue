@@ -96,6 +96,8 @@ Errors are returned as JSON:
 }
 ```
 
+A path that exists but is called with the wrong method returns `405` and an `Allow` header with the accepted methods, for example `DELETE /api/sessions/1` returns `Allow: GET`. A path that does not exist returns `404`.
+
 ## MySQL (optional)
 
 SQLite is the default. MySQL can be used by setting environment variables before starting the backend:
