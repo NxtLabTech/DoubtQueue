@@ -1,11 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/doubt.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_format.dart';
 import 'status_badge.dart';
 
-class CurrentDoubtCard extends StatelessWidget {
+class CurrentDoubtCard extends StatefulWidget {
   const CurrentDoubtCard({
     super.key,
     required this.doubt,
@@ -20,9 +23,113 @@ class CurrentDoubtCard extends StatelessWidget {
   final VoidCallback onSkipped;
 
   @override
+  State<CurrentDoubtCard> createState() => _CurrentDoubtCardState();
+}
+
+class _CurrentDoubtCardState extends State<CurrentDoubtCard> {
+  OverlayEntry? _toastEntry;
+  Timer? _toastTimer;
+
+  @override
+  void dispose() {
+    _toastTimer?.cancel();
+    _toastEntry?.remove();
+    _toastEntry = null;
+    super.dispose();
+  }
+
+  String get _detailsText {
+    return [
+      'Name: ${widget.doubt.studentName}',
+      'Email: ${widget.doubt.studentEmail}',
+      'Topic: ${widget.doubt.topic}',
+      'Question: ${widget.doubt.question}',
+    ].join('\n');
+  }
+
+  void _showCopiedToast() {
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+
+    _toastTimer?.cancel();
+    _toastEntry?.remove();
+
+    final colors = Theme.of(context).colorScheme;
+    // Sit below the app bar / DEBUG ribbon so the toast stays visible.
+    final top = MediaQuery.paddingOf(context).top + kToolbarHeight + 12;
+
+    _toastEntry = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          top: top,
+          right: 16,
+          child: Material(
+            color: Colors.transparent,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 168),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.primary, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.shadow.withValues(alpha: 0.2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 20,
+                        color: colors.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Details copied',
+                        style: TextStyle(
+                          color: colors.onPrimaryContainer,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(_toastEntry!);
+    _toastTimer = Timer(const Duration(seconds: 3), () {
+      _toastEntry?.remove();
+      _toastEntry = null;
+    });
+  }
+
+  Future<void> _copyDetails() async {
+    await Clipboard.setData(ClipboardData(text: _detailsText));
+    if (!mounted) return;
+    _showCopiedToast();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final doubt = widget.doubt;
 
     return Card(
       color: colors.primaryContainer.withValues(alpha: 0.4),
@@ -35,7 +142,7 @@ class CurrentDoubtCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildStatusRow(theme),
+            _buildStatusRow(theme, doubt),
             const SizedBox(height: 12),
             Text(
               doubt.studentName,
@@ -63,7 +170,7 @@ class CurrentDoubtCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusRow(ThemeData theme) {
+  Widget _buildStatusRow(ThemeData theme, Doubt doubt) {
     return Wrap(
       spacing: 12,
       runSpacing: 4,
@@ -85,14 +192,19 @@ class CurrentDoubtCard extends StatelessWidget {
       runSpacing: 12,
       children: [
         FilledButton.icon(
-          onPressed: busy ? null : onSolved,
+          onPressed: widget.busy ? null : widget.onSolved,
           icon: const Icon(Icons.check),
           label: const Text('Mark solved'),
         ),
         OutlinedButton.icon(
-          onPressed: busy ? null : onSkipped,
+          onPressed: widget.busy ? null : widget.onSkipped,
           icon: const Icon(Icons.skip_next),
           label: const Text('Skip'),
+        ),
+        OutlinedButton.icon(
+          onPressed: _copyDetails,
+          icon: const Icon(Icons.copy),
+          label: const Text('Copy details'),
         ),
       ],
     );
