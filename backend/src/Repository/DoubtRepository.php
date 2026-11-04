@@ -59,6 +59,16 @@ class DoubtRepository
         return $row === false ? null : $this->format($row);
     }
 
+    public function hasInProgress(int $sessionId): bool
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT 1 FROM doubts WHERE session_id = ? AND status = 'IN_PROGRESS' LIMIT 1"
+        );
+        $stmt->execute([$sessionId]);
+
+        return $stmt->fetchColumn() !== false;
+    }
+
     public function position(array $doubt): int
     {
         $stmt = $this->pdo->prepare(

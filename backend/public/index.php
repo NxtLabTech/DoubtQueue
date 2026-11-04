@@ -6,6 +6,7 @@ use DoubtQueue\Controller\DoubtController;
 use DoubtQueue\Controller\SessionController;
 use DoubtQueue\Database;
 use DoubtQueue\DatabaseSetup;
+use DoubtQueue\Exception\DoubtInProgressException;
 use DoubtQueue\Exception\NotFoundException;
 use DoubtQueue\Exception\SessionClosedException;
 use DoubtQueue\Exception\ValidationException;
@@ -56,7 +57,7 @@ try {
     $response = Response::error(404, $e->getMessage());
 } catch (ValidationException $e) {
     $response = Response::error(400, $e->getMessage());
-} catch (SessionClosedException $e) {
+} catch (SessionClosedException | DoubtInProgressException $e) {
     $response = Response::error(409, $e->getMessage());
 } catch (Throwable $e) {
     error_log((string) $e);

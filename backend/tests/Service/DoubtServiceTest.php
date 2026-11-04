@@ -6,6 +6,7 @@ namespace DoubtQueue\Tests\Service;
 
 use DoubtQueue\Database;
 use DoubtQueue\DatabaseSetup;
+use DoubtQueue\Exception\DoubtInProgressException;
 use DoubtQueue\Exception\NotFoundException;
 use DoubtQueue\Exception\SessionClosedException;
 use DoubtQueue\Exception\ValidationException;
@@ -84,6 +85,41 @@ class DoubtServiceTest extends TestCase
         $this->assertNotNull($taken['started_at']);
         $this->assertNull($taken['position']);
         $this->assertSame(1, $this->doubts->get($second['id'])['position']);
+    }
+
+    public function testNextThrowsWhenAnotherDoubtIsInProgress(): void
+    {
+        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $this->doubts->join($session['id'], $this->validData());
+        $second = $this->doubts->join($session['id'], ['student_name' => 'Ben'] + $this->validData());
+
+        $this->doubts->next($session['id']);
+
+        $this->expectException(DoubtInProgressException::class);
+        $this->expectExceptionMessage('Finish the current doubt before taking the next one');
+
+        try {
+            $this->doubts->next($session['id']);
+        } finally {
+            $remaining = $this->doubts->get($second['id']);
+            $this->assertSame('WAITING', $remaining['status']);
+        }
+    }
+
+    public function testNextAllowedAfterCurrentDoubtIsFinished(): void
+    {
+        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $first = $this->doubts->join($session['id'], $this->validData());
+        $second = $this->doubts->join($session['id'], ['student_name' => 'Ben'] + $this->validData());
+
+        $takenFirst = $this->doubts->next($session['id']);
+        $this->assertSame($first['id'], $takenFirst['id']);
+
+        $this->doubts->markSolved($takenFirst['id']);
+
+        $takenSecond = $this->doubts->next($session['id']);
+        $this->assertSame($second['id'], $takenSecond['id']);
+        $this->assertSame('IN_PROGRESS', $takenSecond['status']);
     }
 
     public function testSolvedAndSkippedSetFinishedAt(): void
