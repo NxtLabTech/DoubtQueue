@@ -6,6 +6,7 @@ use DoubtQueue\Controller\DoubtController;
 use DoubtQueue\Controller\SessionController;
 use DoubtQueue\Database;
 use DoubtQueue\DatabaseSetup;
+use DoubtQueue\Exception\MethodNotAllowedException;
 use DoubtQueue\Exception\NotFoundException;
 use DoubtQueue\Exception\SessionClosedException;
 use DoubtQueue\Exception\ValidationException;
@@ -54,6 +55,9 @@ try {
     $response = $router->dispatch(Request::fromGlobals());
 } catch (NotFoundException $e) {
     $response = Response::error(404, $e->getMessage());
+} catch (MethodNotAllowedException $e) {
+    header('Allow: ' . implode(', ', $e->allowedMethods));
+    $response = Response::error(405, $e->getMessage());
 } catch (ValidationException $e) {
     $response = Response::error(400, $e->getMessage());
 } catch (SessionClosedException $e) {
