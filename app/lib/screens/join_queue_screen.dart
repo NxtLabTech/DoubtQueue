@@ -56,7 +56,11 @@ class _JoinQueueScreenState extends State<JoinQueueScreen> {
       await Navigator.pushReplacement(
         context,
         MaterialPageRoute<void>(
-          builder: (_) => MyDoubtScreen(api: widget.api, doubt: doubt),
+          builder: (_) => MyDoubtScreen(
+            api: widget.api,
+            doubt: doubt,
+            session: widget.session,
+          ),
         ),
       );
     } on ApiException catch (e) {
