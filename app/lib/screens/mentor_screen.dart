@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/doubt.dart';
@@ -34,6 +36,8 @@ class _MentorScreenState extends State<MentorScreen> {
   String? _loadError;
   String? _actionError;
   String? _notice;
+  Timer? _refreshTimer;
+  bool _autoRefreshing = false;
 
   Session? get _selected {
     for (final session in _sessions) {
@@ -46,6 +50,28 @@ class _MentorScreenState extends State<MentorScreen> {
   void initState() {
     super.initState();
     _loadFirstTime();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _autoRefresh(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _autoRefresh() async {
+    if (_loading || _busy || _autoRefreshing || _selectedId == null) return;
+    _autoRefreshing = true;
+    try {
+      await _loadDetails();
+    } on ApiException {
+      // Ignore it. The next tick will try again.
+    } finally {
+      _autoRefreshing = false;
+    }
   }
 
   Future<void> _loadFirstTime() async {
@@ -97,7 +123,7 @@ class _MentorScreenState extends State<MentorScreen> {
     final id = _selectedId!;
     final queue = await widget.api.getQueue(id);
     final stats = await widget.api.getStats(id);
-    if (!mounted) return;
+    if (!mounted || id != _selectedId) return;
     setState(() {
       _queue = queue;
       _stats = stats;

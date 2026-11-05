@@ -1,4 +1,5 @@
 import 'package:doubtqueue/screens/mentor_screen.dart';
+import 'package:doubtqueue/widgets/stats_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -192,5 +193,73 @@ void main() {
 
     expect(find.text('Ben'), findsOneWidget);
     expect(find.text('2 waiting'), findsOneWidget);
+  });
+
+  testWidgets('refreshes the queue and statistics every 15 seconds', (
+    tester,
+  ) async {
+    final backend = backendWithQueue(waiting: 1);
+    await pumpMentor(tester, backend);
+    await selectSession(tester);
+    expect(find.text('1 waiting'), findsOneWidget);
+    expect(find.text('Ben'), findsNothing);
+
+    backend.addDoubt(1, 'Ben');
+    backend.addDoubt(1, 'Dev', status: 'SOLVED');
+
+    await tester.pump(const Duration(seconds: 15));
+
+    // No full-screen loading state while the refresh runs.
+    expect(find.text('Loading dashboard...'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ben'), findsOneWidget);
+    expect(find.text('2 waiting'), findsOneWidget);
+    final stats = tester.widget<StatsRow>(find.byType(StatsRow)).stats;
+    expect(stats['WAITING'], 2);
+    expect(stats['SOLVED'], 1);
+  });
+
+  testWidgets('auto refresh keeps text typed in the start session form', (
+    tester,
+  ) async {
+    final backend = backendWithQueue(waiting: 1);
+    await pumpMentor(tester, backend);
+    await selectSession(tester);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'Draft title');
+    backend.addDoubt(1, 'Ben');
+
+    await tester.pump(const Duration(seconds: 15));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ben'), findsOneWidget);
+    expect(find.text('Draft title'), findsOneWidget);
+  });
+
+  testWidgets('does not refresh when no session is selected', (tester) async {
+    final backend = FakeBackend(sessions: []);
+    await pumpMentor(tester, backend);
+    final before = backend.requestCount;
+
+    await tester.pump(const Duration(seconds: 15));
+    await tester.pumpAndSettle();
+
+    expect(backend.requestCount, before);
+  });
+
+  testWidgets('stops refreshing when the screen is closed', (tester) async {
+    final backend = backendWithQueue();
+    await pumpMentor(tester, backend);
+    await selectSession(tester);
+
+    await tester.pumpWidget(const SizedBox());
+    final before = backend.requestCount;
+
+    await tester.pump(const Duration(seconds: 15));
+
+    expect(backend.requestCount, before);
   });
 }

@@ -12,6 +12,7 @@ class FakeBackend {
   final List<Map<String, dynamic>> sessions;
   final List<Map<String, dynamic>> doubts = [];
   bool failRequests = false;
+  int requestCount = 0;
 
   static Map<String, dynamic> openSession(
     int id,
@@ -79,6 +80,7 @@ class FakeBackend {
   }
 
   Future<http.Response> _handle(http.Request request) async {
+    requestCount++;
     if (failRequests) {
       return _json({'status': 500, 'message': 'Something went wrong'}, 500);
     }
