@@ -27,14 +27,23 @@ class DoubtServiceTest extends TestCase
 
         $sessionRepository = new SessionRepository($pdo);
         $this->sessions = new SessionService($sessionRepository);
-        $this->doubts = new DoubtService(new DoubtRepository($pdo), $sessionRepository);
+        $this->doubts = new DoubtService(
+            new DoubtRepository($pdo),
+            $sessionRepository
+        );
     }
 
     public function testJoiningOpenSessionWorks(): void
     {
-        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $session = $this->sessions->create([
+            'title' => 'PHP',
+            'mentor_name' => 'Priya'
+        ]);
 
-        $doubt = $this->doubts->join($session['id'], $this->validData());
+        $doubt = $this->doubts->join(
+            $session['id'],
+            $this->validData()
+        );
 
         $this->assertSame('WAITING', $doubt['status']);
         $this->assertSame(1, $doubt['position']);
@@ -43,7 +52,11 @@ class DoubtServiceTest extends TestCase
 
     public function testJoiningClosedSessionThrows(): void
     {
-        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $session = $this->sessions->create([
+            'title' => 'PHP',
+            'mentor_name' => 'Priya'
+        ]);
+
         $this->sessions->close($session['id']);
 
         $this->expectException(SessionClosedException::class);
@@ -53,7 +66,11 @@ class DoubtServiceTest extends TestCase
 
     public function testMissingQuestionThrows(): void
     {
-        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $session = $this->sessions->create([
+            'title' => 'PHP',
+            'mentor_name' => 'Priya'
+        ]);
+
         $data = $this->validData();
         unset($data['question']);
 
@@ -64,18 +81,35 @@ class DoubtServiceTest extends TestCase
 
     public function testInvalidEmailThrows(): void
     {
-        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $session = $this->sessions->create([
+            'title' => 'PHP',
+            'mentor_name' => 'Priya'
+        ]);
 
         $this->expectException(ValidationException::class);
 
-        $this->doubts->join($session['id'], ['student_email' => 'not-an-email'] + $this->validData());
+        $this->doubts->join(
+            $session['id'],
+            ['student_email' => 'not-an-email'] + $this->validData()
+        );
     }
 
     public function testNextTakesOldestWaitingDoubt(): void
     {
-        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
-        $first = $this->doubts->join($session['id'], $this->validData());
-        $second = $this->doubts->join($session['id'], ['student_name' => 'Ben'] + $this->validData());
+        $session = $this->sessions->create([
+            'title' => 'PHP',
+            'mentor_name' => 'Priya'
+        ]);
+
+        $first = $this->doubts->join(
+            $session['id'],
+            $this->validData()
+        );
+
+        $second = $this->doubts->join(
+            $session['id'],
+            ['student_name' => 'Ben'] + $this->validData()
+        );
 
         $taken = $this->doubts->next($session['id']);
 
@@ -83,17 +117,118 @@ class DoubtServiceTest extends TestCase
         $this->assertSame('IN_PROGRESS', $taken['status']);
         $this->assertNotNull($taken['started_at']);
         $this->assertNull($taken['position']);
-        $this->assertSame(1, $this->doubts->get($second['id'])['position']);
+        $this->assertSame(
+            1,
+            $this->doubts->get($second['id'])['position']
+        );
+    }
+
+    public function testQueueIncludesCorrectPositions(): void
+    {
+        $session = $this->sessions->create([
+            'title' => 'PHP',
+            'mentor_name' => 'Priya'
+        ]);
+
+        // Join three doubts
+        $first = $this->doubts->join(
+            $session['id'],
+            $this->validData()
+        );
+
+        $second = $this->doubts->join(
+            $session['id'],
+            ['student_name' => 'Ben'] + $this->validData()
+        );
+
+        $third = $this->doubts->join(
+            $session['id'],
+            ['student_name' => 'Rahul'] + $this->validData()
+        );
+
+        // Check queue positions: 1, 2, 3
+        $queue = $this->doubts->queue($session['id']);
+
+        $this->assertCount(3, $queue);
+
+        $this->assertSame($first['id'], $queue[0]['id']);
+        $this->assertSame($second['id'], $queue[1]['id']);
+        $this->assertSame($third['id'], $queue[2]['id']);
+
+        foreach ($queue as $index => $doubt) {
+            $expectedPosition = $index + 1;
+
+            $this->assertSame(
+                $expectedPosition,
+                $doubt['position']
+            );
+
+            // Queue position must match GET /api/doubts/{id}
+            $individualDoubt = $this->doubts->get($doubt['id']);
+
+            $this->assertSame(
+                $doubt['position'],
+                $individualDoubt['position']
+            );
+        }
+
+        // Take the oldest doubt
+        $taken = $this->doubts->next($session['id']);
+
+        $this->assertSame($first['id'], $taken['id']);
+
+        // Check remaining queue positions: 1, 2
+        $queue = $this->doubts->queue($session['id']);
+
+        $this->assertCount(2, $queue);
+
+        $this->assertSame($second['id'], $queue[0]['id']);
+        $this->assertSame($third['id'], $queue[1]['id']);
+
+        foreach ($queue as $index => $doubt) {
+            $expectedPosition = $index + 1;
+
+            $this->assertSame(
+                $expectedPosition,
+                $doubt['position']
+            );
+
+            $individualDoubt = $this->doubts->get($doubt['id']);
+
+            $this->assertSame(
+                $doubt['position'],
+                $individualDoubt['position']
+            );
+        }
+    }
+
+    public function testEmptyQueueReturnsEmptyArray(): void
+    {
+        $session = $this->sessions->create([
+            'title' => 'PHP',
+            'mentor_name' => 'Priya'
+        ]);
+
+        $this->assertSame([], $this->doubts->queue($session['id']));
     }
 
     public function testSolvedAndSkippedSetFinishedAt(): void
     {
-        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
+        $session = $this->sessions->create([
+            'title' => 'PHP',
+            'mentor_name' => 'Priya'
+        ]);
+
         $this->doubts->join($session['id'], $this->validData());
         $this->doubts->join($session['id'], $this->validData());
 
-        $solved = $this->doubts->markSolved($this->doubts->next($session['id'])['id']);
-        $skipped = $this->doubts->markSkipped($this->doubts->next($session['id'])['id']);
+        $solved = $this->doubts->markSolved(
+            $this->doubts->next($session['id'])['id']
+        );
+
+        $skipped = $this->doubts->markSkipped(
+            $this->doubts->next($session['id'])['id']
+        );
 
         $this->assertSame('SOLVED', $solved['status']);
         $this->assertNotNull($solved['finished_at']);
@@ -103,8 +238,15 @@ class DoubtServiceTest extends TestCase
 
     public function testFinishingDoubtThatIsNotInProgressThrows(): void
     {
-        $session = $this->sessions->create(['title' => 'PHP', 'mentor_name' => 'Priya']);
-        $doubt = $this->doubts->join($session['id'], $this->validData());
+        $session = $this->sessions->create([
+            'title' => 'PHP',
+            'mentor_name' => 'Priya'
+        ]);
+
+        $doubt = $this->doubts->join(
+            $session['id'],
+            $this->validData()
+        );
 
         $this->expectException(ValidationException::class);
 

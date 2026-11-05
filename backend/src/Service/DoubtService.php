@@ -53,7 +53,13 @@ class DoubtService
     {
         $this->findSession($sessionId);
 
-        return $this->doubts->findWaiting($sessionId);
+        $doubts = $this->doubts->findWaiting($sessionId);
+
+        foreach ($doubts as $index => $doubt) {
+            $doubts[$index]['position'] = $index + 1;
+        }
+
+        return $doubts;
     }
 
     public function next(int $sessionId): array
