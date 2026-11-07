@@ -21,12 +21,18 @@ class ApiService {
   final http.Client _client;
   final String baseUrl;
 
+  static const _invalidResponseMessage =
+      'The server returned an unexpected response. Please try again.';
+
   Future<List<Session>> getSessions({String? status}) async {
     final query = status == null ? '' : '?status=$status';
-    final data = await _send('GET', '/api/sessions$query') as List<dynamic>;
-    return data
-        .map((item) => Session.fromJson(item as Map<String, dynamic>))
-        .toList();
+    final data = await _send('GET', '/api/sessions$query');
+
+    return _parseResponse(() {
+      return (data as List<dynamic>)
+          .map((item) => Session.fromJson(item as Map<String, dynamic>))
+          .toList();
+    });
   }
 
   Future<Session> createSession(String title, String mentorName) async {
@@ -34,12 +40,14 @@ class ApiService {
       'title': title,
       'mentor_name': mentorName,
     });
-    return Session.fromJson(data as Map<String, dynamic>);
+
+    return _parseResponse(() => Session.fromJson(data as Map<String, dynamic>));
   }
 
   Future<Session> closeSession(int sessionId) async {
     final data = await _send('PATCH', '/api/sessions/$sessionId/close');
-    return Session.fromJson(data as Map<String, dynamic>);
+
+    return _parseResponse(() => Session.fromJson(data as Map<String, dynamic>));
   }
 
   Future<Doubt> joinSession(
@@ -55,42 +63,52 @@ class ApiService {
       'topic': topic,
       'question': question,
     });
-    return Doubt.fromJson(data as Map<String, dynamic>);
+
+    return _parseResponse(() => Doubt.fromJson(data as Map<String, dynamic>));
   }
 
   Future<List<Doubt>> getQueue(int sessionId) async {
-    final data =
-        await _send('GET', '/api/sessions/$sessionId/queue') as List<dynamic>;
-    return data
-        .map((item) => Doubt.fromJson(item as Map<String, dynamic>))
-        .toList();
+    final data = await _send('GET', '/api/sessions/$sessionId/queue');
+
+    return _parseResponse(() {
+      return (data as List<dynamic>)
+          .map((item) => Doubt.fromJson(item as Map<String, dynamic>))
+          .toList();
+    });
   }
 
   Future<Doubt> takeNext(int sessionId) async {
     final data = await _send('POST', '/api/sessions/$sessionId/next');
-    return Doubt.fromJson(data as Map<String, dynamic>);
+
+    return _parseResponse(() => Doubt.fromJson(data as Map<String, dynamic>));
   }
 
   Future<Map<String, int>> getStats(int sessionId) async {
     final data = await _send('GET', '/api/sessions/$sessionId/stats');
-    return (data as Map<String, dynamic>).map(
-      (status, count) => MapEntry(status, count as int),
-    );
+
+    return _parseResponse(() {
+      return (data as Map<String, dynamic>).map(
+        (status, count) => MapEntry(status, count as int),
+      );
+    });
   }
 
   Future<Doubt> getDoubt(int doubtId) async {
     final data = await _send('GET', '/api/doubts/$doubtId');
-    return Doubt.fromJson(data as Map<String, dynamic>);
+
+    return _parseResponse(() => Doubt.fromJson(data as Map<String, dynamic>));
   }
 
   Future<Doubt> markSolved(int doubtId) async {
     final data = await _send('PATCH', '/api/doubts/$doubtId/solved');
-    return Doubt.fromJson(data as Map<String, dynamic>);
+
+    return _parseResponse(() => Doubt.fromJson(data as Map<String, dynamic>));
   }
 
   Future<Doubt> markSkipped(int doubtId) async {
     final data = await _send('PATCH', '/api/doubts/$doubtId/skipped');
-    return Doubt.fromJson(data as Map<String, dynamic>);
+
+    return _parseResponse(() => Doubt.fromJson(data as Map<String, dynamic>));
   }
 
   Future<dynamic> _send(
@@ -99,12 +117,14 @@ class ApiService {
     Map<String, dynamic>? body,
   ]) async {
     final request = http.Request(method, Uri.parse('$baseUrl$path'));
+
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
     }
 
     final http.Response response;
+
     try {
       response = await http.Response.fromStream(await _client.send(request));
     } on http.ClientException {
@@ -113,24 +133,44 @@ class ApiService {
       );
     }
 
-    final decoded = _decode(response);
+    dynamic decoded;
+
+    try {
+      decoded = _decode(response);
+    } on FormatException {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        throw const ApiException(_invalidResponseMessage);
+      }
+
+      throw ApiException('Request failed with status ${response.statusCode}');
+    }
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decoded;
     }
+
     if (decoded is Map<String, dynamic> && decoded['message'] is String) {
       throw ApiException(decoded['message'] as String);
     }
+
     throw ApiException('Request failed with status ${response.statusCode}');
   }
 
   dynamic _decode(http.Response response) {
-    if (response.body.isEmpty) {
+    if (response.bodyBytes.isEmpty) {
       return null;
     }
+
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  }
+
+  T _parseResponse<T>(T Function() parser) {
     try {
-      return jsonDecode(utf8.decode(response.bodyBytes));
+      return parser();
+    } on TypeError {
+      throw const ApiException(_invalidResponseMessage);
     } on FormatException {
-      return null;
+      throw const ApiException(_invalidResponseMessage);
     }
   }
 }

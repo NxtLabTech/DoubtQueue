@@ -87,4 +87,84 @@ void main() {
       ),
     );
   });
+
+  test('an HTML response throws a friendly ApiException', () async {
+    final client = MockClient((request) async {
+      return http.Response('<html><body>Server Error</body></html>', 200);
+    });
+    final api = ApiService(client, baseUrl: baseUrl);
+
+    expect(
+      api.getSessions(),
+      throwsA(
+        isA<ApiException>().having(
+          (e) => e.message,
+          'message',
+          contains('unexpected response'),
+        ),
+      ),
+    );
+  });
+
+  test('invalid JSON throws a friendly ApiException', () async {
+    final client = MockClient((request) async {
+      return http.Response('{invalid json}', 200);
+    });
+    final api = ApiService(client, baseUrl: baseUrl);
+
+    expect(
+      api.getSessions(),
+      throwsA(
+        isA<ApiException>().having(
+          (e) => e.message,
+          'message',
+          contains('unexpected response'),
+        ),
+      ),
+    );
+  });
+
+  test('an unexpected response type throws a friendly ApiException', () async {
+    final client = MockClient((request) async {
+      return http.Response(jsonEncode({'id': 1, 'title': 'PHP Basics'}), 200);
+    });
+    final api = ApiService(client, baseUrl: baseUrl);
+
+    expect(
+      api.getSessions(),
+      throwsA(
+        isA<ApiException>().having(
+          (e) => e.message,
+          'message',
+          contains('unexpected response'),
+        ),
+      ),
+    );
+  });
+
+  test(
+    'missing required session fields throw a friendly ApiException',
+    () async {
+      final client = MockClient((request) async {
+        return http.Response(
+          jsonEncode([
+            {'title': 'PHP Basics'},
+          ]),
+          200,
+        );
+      });
+      final api = ApiService(client, baseUrl: baseUrl);
+
+      expect(
+        api.getSessions(),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            contains('unexpected response'),
+          ),
+        ),
+      );
+    },
+  );
 }
