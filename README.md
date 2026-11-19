@@ -122,6 +122,9 @@ MySQL support is optional and has not been tested locally. The tests use SQLite 
 - **`composer install` says the zip extension is missing:** enable `extension=zip` in `php.ini`.
 - **"could not find driver":** enable `extension=pdo_sqlite` in `php.ini`.
 - **Sample data is wrong:** stop the backend and delete `backend/data/doubtqueue.sqlite`. It is created again on the next start.
+- **`flutter run -d chrome` fails with "Failed to establish connection with the application instance in Chrome" (or `SocketException`):** Flutter cannot connect to Chrome's debug port. Run `flutter run -d web-server --web-port 8081` instead and open `http://localhost:8081` in your browser.
+- **`composer start` fails with "Address already in use":** another program is already using port 8000. Either stop the process using port 8000, or run the backend on another port with `php -S localhost:8001 -t public public/index.php` and run the app with `--dart-define=API_BASE_URL=http://localhost:8001`.
+- **"Could not reach the server" on a real phone:** the phone cannot reach your computer. Make sure the phone and computer are on the same network, start the backend with `php -S 0.0.0.0:8000 -t public public/index.php` so it accepts outside connections, use your computer's local IP address in `--dart-define=API_BASE_URL=http://<your-ip>:8000` (e.g. `http://192.168.1.20:8000`), and check that your computer's firewall is not blocking incoming connections on port 8000.
 
 ## Contributing
 
