@@ -122,6 +122,68 @@ MySQL support is optional and has not been tested locally. The tests use SQLite 
 - **`composer install` says the zip extension is missing:** enable `extension=zip` in `php.ini`.
 - **"could not find driver":** enable `extension=pdo_sqlite` in `php.ini`.
 - **Sample data is wrong:** stop the backend and delete `backend/data/doubtqueue.sqlite`. It is created again on the next start.
+- **"Failed to establish connection with the application instance in Chrome":** Flutter attempts to communicate with Chrome through a debugging connection. When Flutter cannot establish that connection with Chrome's debugging port, this error or a related `SocketException` may occur. A practical workaround is to run Flutter using the `web-server` device instead of the Chrome device:
+
+  ```bash
+  flutter run -d web-server --web-port 8081
+  ```
+
+  Then manually open:
+
+  http://localhost:8081
+
+  in your browser. Note that this is a workaround for the Chrome debugging connection problem, not a claim that the underlying Chrome issue has been permanently fixed.
+- **"Address already in use":** The backend is attempting to listen on port 8000, but another process is already using that port. You can resolve this with one of two solutions:
+  - **Solution A:** Identify and stop the process currently using port 8000, provided it is safe to stop. Do not terminate unknown or system processes blindly.
+  - **Solution B:** Run the backend on another available port:
+
+    ```bash
+    php -S localhost:8001 -t public public/index.php
+    ```
+
+    Flutter must also be configured to use the new backend URL. Pass the following flag:
+
+    ```bash
+    --dart-define=API_BASE_URL=http://localhost:8001
+    ```
+
+    For example, combining this flag with the repository's Flutter run command:
+
+    ```bash
+    flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8001
+    ```
+
+    Both the backend port and Flutter `API_BASE_URL` must match so that Flutter sends requests to the correct port where the backend is listening.
+- **Real phone cannot connect ("Could not reach the server. Check that the backend is running."):** When running the app on a physical device, you may see "Could not reach the server. Check that the backend is running." Likely causes include:
+  - The phone is attempting to access `localhost`, which refers to the phone itself, not the development computer.
+  - The phone and development computer may not be connected to the same local network.
+  - The PHP development server may only be listening on the computer's loopback interface (`localhost` / `127.0.0.1`).
+  - The computer's firewall may be blocking incoming connections.
+
+  How to fix this:
+  1. Find the development computer's local IPv4 address (for example, using `ipconfig` on Windows or `ifconfig` / `ip a` on macOS and Linux).
+  2. Connect the phone and development computer to the same Wi-Fi/local network.
+  3. Start PHP so it listens on all network interfaces:
+
+     ```bash
+     php -S 0.0.0.0:8000 -t public public/index.php
+     ```
+
+  4. The Flutter application must use the computer's local IP address rather than `localhost`. Provide the API base URL flag:
+
+     ```bash
+     --dart-define=API_BASE_URL=http://192.168.1.10:8000
+     ```
+
+     For example:
+
+     ```bash
+     flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8000
+     ```
+
+     Note: `192.168.1.10` is only an illustrative example and must be replaced with your computer's actual local IPv4 address.
+  5. The firewall may need to allow incoming connections on port 8000 for the PHP process or the development environment. Do not disable the firewall entirely.
+  6. Network isolation, guest Wi-Fi, VPNs, or router settings may prevent devices from communicating even when connected to the same Wi-Fi network.
 
 ## Contributing
 
