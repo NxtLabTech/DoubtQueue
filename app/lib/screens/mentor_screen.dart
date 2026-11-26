@@ -24,6 +24,7 @@ class MentorScreen extends StatefulWidget {
 }
 
 class _MentorScreenState extends State<MentorScreen> {
+  final _expansionController = ExpansibleController();
   List<Session> _sessions = [];
   int? _selectedId;
   List<Doubt> _queue = [];
@@ -46,6 +47,12 @@ class _MentorScreenState extends State<MentorScreen> {
   void initState() {
     super.initState();
     _loadFirstTime();
+  }
+
+  @override
+  void dispose() {
+    _expansionController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadFirstTime() async {
@@ -106,6 +113,7 @@ class _MentorScreenState extends State<MentorScreen> {
 
   Future<void> _createSession(String title, String mentorName) async {
     final session = await widget.api.createSession(title, mentorName);
+    if (!mounted) return;
     setState(() => _current = null);
     await _loadSessions(selectId: session.id);
   }
@@ -169,6 +177,9 @@ class _MentorScreenState extends State<MentorScreen> {
       await widget.api.closeSession(_selectedId!);
       _current = null;
       await _loadSessions();
+      if (_sessions.isEmpty && !_expansionController.isExpanded) {
+        _expansionController.expand();
+      }
       setState(() => _notice = '$title was closed.');
     });
   }
@@ -219,7 +230,16 @@ class _MentorScreenState extends State<MentorScreen> {
           const SizedBox(height: itemGap),
         ],
         const SizedBox(height: itemGap),
-        CreateSessionCard(onCreate: _createSession),
+        ExpansionTile(
+          controller: _expansionController,
+          title: const Text('Start a new session'),
+          initiallyExpanded: _sessions.isEmpty,
+          maintainState: true,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          tilePadding: EdgeInsets.zero,
+          children: [CreateSessionCard(onCreate: _createSession)],
+        ),
         const SizedBox(height: sectionGap),
         ..._buildSessionSection(),
       ],
