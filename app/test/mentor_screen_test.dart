@@ -37,7 +37,11 @@ void main() {
     await pumpMentor(tester, FakeBackend(sessions: []));
 
     expect(find.text('Mentor dashboard'), findsOneWidget);
+    expect(find.text('Start a new session'), findsOneWidget);
     expect(find.text('Start a session'), findsOneWidget);
+    expect(find.text('Session title'), findsOneWidget);
+    expect(find.text('Mentor name'), findsOneWidget);
+    expect(find.text('Start session'), findsOneWidget);
     expect(find.text('No open sessions'), findsOneWidget);
     expect(find.text('Statistics'), findsNothing);
   });
@@ -54,7 +58,75 @@ void main() {
     await tester.tap(find.text('Try again'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Start a session'), findsOneWidget);
+    expect(find.text('Start a new session'), findsOneWidget);
+  });
+
+  testWidgets(
+    'collapses the start form by default when at least one open session exists',
+    (tester) async {
+      final backend = FakeBackend(
+        sessions: [FakeBackend.openSession(1, 'Flutter Architecture')],
+      );
+      await pumpMentor(tester, backend);
+
+      expect(find.text('Start a new session'), findsOneWidget);
+      expect(find.text('Session title'), findsNothing);
+      expect(find.text('Mentor name'), findsNothing);
+      expect(find.text('Start session'), findsNothing);
+      expect(find.text('Session'), findsOneWidget);
+    },
+  );
+
+  testWidgets('expands the collapsed form when header is tapped', (
+    tester,
+  ) async {
+    final backend = FakeBackend(
+      sessions: [FakeBackend.openSession(1, 'Flutter Architecture')],
+    );
+    await pumpMentor(tester, backend);
+
+    expect(find.text('Session title'), findsNothing);
+
+    await tester.tap(find.text('Start a new session'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Session title'), findsOneWidget);
+    expect(find.text('Mentor name'), findsOneWidget);
+    expect(find.text('Start session'), findsOneWidget);
+  });
+
+  testWidgets('preserves form text across collapse and expansion cycles', (
+    tester,
+  ) async {
+    final backend = FakeBackend(
+      sessions: [FakeBackend.openSession(1, 'Flutter Architecture')],
+    );
+    await pumpMentor(tester, backend);
+
+    await tester.tap(find.text('Start a new session'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Session title'),
+      'Advanced Dart Workshop',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Mentor name'),
+      'Rishi',
+    );
+
+    // Collapse the form
+    await tester.tap(find.text('Start a new session'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Session title'), findsNothing);
+
+    // Expand the form again
+    await tester.tap(find.text('Start a new session'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Advanced Dart Workshop'), findsOneWidget);
+    expect(find.text('Rishi'), findsOneWidget);
   });
 
   testWidgets('shows statistics and the waiting queue for a session', (
