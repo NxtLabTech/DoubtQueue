@@ -13,20 +13,56 @@ class QueueStatusCard extends StatelessWidget {
   final Doubt doubt;
   final bool refreshing;
 
+  String _semanticsLabel() {
+    if (doubt.isWaiting) {
+      if (doubt.position == null) {
+        return 'Waiting. You are currently in the queue.';
+      }
+      final ahead = doubt.studentsAhead;
+      final String aheadText;
+      if (ahead == 0) {
+        aheadText = 'No students ahead of you.';
+      } else if (ahead == 1) {
+        aheadText = '1 student ahead of you.';
+      } else {
+        aheadText = '$ahead students ahead of you.';
+      }
+      return 'Waiting. Your position is ${doubt.position}. $aheadText';
+    }
+
+    switch (doubt.status) {
+      case 'IN_PROGRESS':
+        return 'Your doubt is currently being addressed.';
+      case 'SOLVED':
+        return 'Your doubt has been solved.';
+      case 'SKIPPED':
+        return 'Your doubt was skipped.';
+      default:
+        return doubt.status;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 20),
-            if (doubt.isWaiting)
-              _buildWaiting(context)
-            else
-              _buildOtherStatus(context),
-          ],
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: _semanticsLabel(),
+      child: ExcludeSemantics(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                _buildHeader(context),
+                const SizedBox(height: 20),
+                if (doubt.isWaiting)
+                  _buildWaiting(context)
+                else
+                  _buildOtherStatus(context),
+              ],
+            ),
+          ),
         ),
       ),
     );
